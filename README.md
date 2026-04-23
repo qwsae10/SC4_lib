@@ -1,4 +1,4 @@
-# SC4_lib
+# ScintPy
 
 Simple tools for working with ScintPi data.
 
@@ -14,7 +14,3 @@ This repository contains small utilities and pipelines for:
 - `src/scintpi_tools/services/` - core processing steps
 - `src/scintpi_tools/pipelines/` - higher-level pipeline scripts
 - `tests/` - test and example scripts
-
-## Notes
-
--
