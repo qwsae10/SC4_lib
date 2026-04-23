@@ -1,15 +1,11 @@
 
 #%%
-from cmath import phase
-from datetime import datetime
-import glob
-from itertools import permutations
 
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy import signal
-
+#hi
 
 
 
@@ -18,32 +14,10 @@ import pandas as pd
 from scipy import signal
 
 
-def detect_sampling_rate(df):
-    """
-    detect the sampling rate of the data by looking at the number of samples per minute per PRN.
-    """
-    # samples per (minute, PRN)
-    counts = (
-        df
-        .groupby(['minute', 'PRN'])
-        .size()
-        .reset_index(name='n_samples')
-    )
+import numpy as np
+import pandas as pd
+from scipy import signal
 
-
-    n = counts.n_samples.max()
-
-    threshold = 10
-    if abs(n-600) < threshold:
-        return 600/60
-    elif abs(n-1200) < threshold:
-        return 1200/60
-    elif abs(n-2400) < threshold:
-        return 2400/60
-    elif abs(n-3000) < threshold:
-        return 3000/60
-    else:
-        return None
 
 def add_detrended_phase_exact(
     df,
@@ -62,21 +36,6 @@ def add_detrended_phase_exact(
     output:
         same dataframe with new column `out_col`
     """
-
-    gnssdic = {0: "GPS", 1: "SBS", 2: "GAL", 3: "BDS", 6: "GLO"}
-
-    def make_prn_local(dfin):
-        constellation_map = {
-            "GPS": "G",
-            "BDS": "C",
-            "GAL": "E",
-            "GLO": "R",
-            "QZSS": "J",
-            "IRNSS": "I",
-            "SBAS": "S",
-            "SBS": "S",
-        }
-        return dfin["SIG"].map(constellation_map) + dfin["SVID"].astype(int).astype(str).str.zfill(2)
 
     def repair_discontinuities(vec, threshold=10):
         first_order = pd.DataFrame({"delt": vec.diff()})
@@ -227,132 +186,24 @@ def add_detrended_phase_exact(
         detr_all = pd.concat(pieces, ignore_index=True)
         out = out.merge(detr_all, on="_row_id", how="left")
     else:
-
         out[out_col] = np.nan
 
     out = out.sort_values("_row_id").drop(columns="_row_id")
     return out
-    # Example usage as a script.
 
 
+file = '/Users/isaac/Documents/scintpi3_20240511_0400_1203575.6250W_432707.1250N_v325.pq'
 
+df = pd.read_parquet(file)
 
-files = glob.glob('/Users/isaac/Documents/ScintPi/Mothersday/Data/*scintpi3*')
-ismr_files = glob.glob('/Users/isaac/Documents/ScintPi/Mothersday/Data/*CSS*')
-
-
-df = pd.read_parquet(files[0])
-#%%
-#gnssdic_loop = {0: 'GPS', 1: 'SBS', 2: 'GAL', 3: 'BDS', 6: 'GLO'}
-#df['cons'] = df['cons'].map(gnssdic_loop)
+gnssdic_loop = {0: 'GPS', 1: 'SBS', 2: 'GAL', 3: 'BDS', 6: 'GLO'}
+df['cons'] = df['cons'].map(gnssdic_loop)
 df = df[~((df['cons'] == 'GLO') & (df['svid'] == 255))].copy()
 
-df=df[df['elev']>30]
-
-
-
-gps_epoch = datetime(1980, 1, 6)
-if 'week' in df.columns and 'towe' in df.columns:
-    df['datetime'] = gps_epoch + pd.to_timedelta(df['week'].astype(int), unit='W') \
-                        + pd.to_timedelta(df['towe'].astype(float), unit='s')
-    df.drop(columns=['week', 'towe'], inplace=True, errors='ignore')
-
+df=df.reset_index()
 #%%
+# keep default unique row index here
+# keep datetime as a normal column
+detr=add_detrended_phase_exact(df, phase_col="cph1", out_col="detrended_cph1", tr=1)
+detr=add_detrended_phase_exact(df, phase_col="cph2", out_col="detrended_cph2", tr=1)
 
-detr=add_detrended_phase_exact(df, phase_col="cph1", out_col="detrended_cph1", tr=1,fs=10)
-detr=add_detrended_phase_exact(detr, phase_col="cph2", out_col="detrended_cph2", tr=1,fs=10)
-
-
-
-#%%
-ismr_tot=[]
-for i in ismr_files:
-    df_ismr = pd.read_parquet(i)
-    ismr_tot.append(df_ismr)
-ismr_tot=pd.concat(ismr_tot,ignore_index=True)
-
-#%%
-
-
-detr['med1'] = detr.groupby('datetime')['detrended_cph1'].transform('median')
-
-# %%
-def make_prn(df, cons_col='cons', svid_col='svid'):
-    # map constellations to prn prefix
-    prefix_map = {
-        'GPS': 'G',
-        'GAL': 'E',
-        'GLO': 'R',
-        'BDS': 'C',
-        'SBAS': 'S',
-
-    }
-    prn = (
-        df[cons_col].map(prefix_map) +
-        df[svid_col].astype(int).astype(str).str.zfill(2)
-    )
-    return prn
-
-detr['PRN'] = make_prn(detr)
-detr['minute']= detr['datetime'].dt.floor('T')
-
-detr['detrended_cph1_noclock']= detr['detrended_cph1'] - detr['med1']
-#%%
-
-
-import numpy as np
-sigphi_df = (
-    detr
-    .groupby(['minute', 'PRN'])['detrended_cph1_noclock']
-    .agg(
-        sigphi_1=lambda x: np.nanstd(x),
-        n_samples='count'
-    )
-    .reset_index()
-)
-
-# %%
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
-
-# choose which ismr column to compare against
-ismr_col = 'Phi60_1'
-ismr_tot['Phi60_1'] = pd.to_numeric(ismr_tot['Phi60_1'], errors='coerce')
-# optional: make sure minute is datetime
-sigphi_df['minute'] = pd.to_datetime(sigphi_df['minute'])
-
-# if ismr_tot has more than one row per PRN, reduce it first
-ismr_use = (
-    ismr_tot[['PRN', ismr_col,'Elevation']]
-    .dropna()
-    .groupby('PRN', as_index=False)
-    .mean()
-)
-
-# merge by PRN
-df = sigphi_df.merge(ismr_use, on='PRN', how='inner')
-
-# remove bad values and keep plotting range
-df = df.replace([np.inf, -np.inf], np.nan).dropna(subset=['sigphi_1', ismr_col])
-df = df[(df['sigphi_1'] >= 0) & (df[ismr_col] >= 0)]
-df_plot = df[(df['Elevation'] >= 30) 
-             & (df['minute'] >= df['minute'].min()+pd.Timedelta(minutes=5)) 
-             & (df['minute'] <= df['minute'].max()-pd.Timedelta(minutes=5))
-             & (df['n_samples'] >= 590)  # optional: only keep points with enough samples]
-
-# all-satellite scatter
-plt.figure(figsize=(6, 6))
-plt.scatter(df_plot['sigphi_1'], df_plot[ismr_col], s=12)
-plt.plot([0, 2], [0, 2], 'k--')
-
-plt.xlim(0, 1)
-plt.ylim(0, 1)
-plt.xlabel('ScintPi $\sigma_\phi$')
-plt.ylabel(f'ISMR {ismr_col}')
-plt.title('All satellites')
-plt.tight_layout()
-plt.show()
-#%%
-
-plt.plot(detr['datetime'], detr['med1']);plt.ylim(-2,3)
