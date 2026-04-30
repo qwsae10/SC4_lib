@@ -1,57 +1,95 @@
 # scintkit
-
 [WORK IN PROGRESS]
 
 Simple tools for working with ScintPi and GNSS scintillation data.
 
-This repository contains utilities and pipelines for:
+---
 
-- converting raw data to Parquet
-- adding derived products
-- running processing workflows
+## Overview
+
+This repository provides utilities and pipelines for:
+
+- converting raw binary data to Parquet
+- adding derived products (TEC, S4, sigma_phi, etc.)
+- running lightweight processing workflows
+
+---
 
 ## Project Layout
 
-- `src/scintkit/reading/` - binary file readers and data loading utilities
-- `src/scintkit/preprocessing/` - data preprocessing and formatting utilities
-- `src/scintkit/services/` - core processing functions (compute, conversion, phase detrending)
-- `src/scintkit/utils/` - misc utility functions and helpers
-- `src/scintkit/pipelines/` - end-to-end pipeline scripts for multi-level data processing on server
-- `tests/` - test and example scripts
+
+```
+src/scintkit/reading/         # binary readers and data loading
+src/scintkit/preprocessing/   # formatting and preprocessing
+src/scintkit/services/        # core computations (TEC, S4, phase detrending)
+src/scintkit/utils/           # helper utilities
+src/scintkit/pipelines/       # end-to-end processing pipelines
+tests/                        # test scripts and example notebooks
+
+```
+
+---
 
 ## Installation
 
-Recommended (editable install for development):
+### 1. Get the repository
 
-Run from the repository root:
+Clone with git:
+
+```bash
+git clone https://github.com/<your-username>/scintkit.git
+cd scintkit
+````
+
+Or download as a ZIP from GitHub and extract it.
+
+---
+
+### 2. Install (recommended)
+
+Editable install for development:
 
 ```bash
 python -m pip install -e .
 ```
 
-This makes the package importable as `scintkit` during development. If you do not want to install the package, you can add the `src` directory to `PYTHONPATH`:
+This makes the package importable as `scintkit`.
 
-```bash
-export PYTHONPATH=$PWD/src:$PYTHONPATH
-```
+---
 
 ## Usage
 
-You can import and call the compute functions directly. Example usage:
+
+You can import and run core processing functions directly.
+
 
 ```python
-import pandas as pd
-from scintkit.services import compute
+from scintkit.pipelines.auto import process
 
-# load a full-rate dataframe (example)
-df = pd.read_parquet("data/fullrate.parquet")
-
-# compute derived products (adds columns like tec12, sigma_phi_1, s4_1, ...)
-df_with_products = compute.add_products(df, verbose=True)
+process("example.bin.zip")
 ```
+
+This will:
+
+1. convert raw data to parquet
+2. apply preprocessing
+3. compute derived products
+4. output lvl3 files
+
+---
 
 ## Tutorial
 
-'/tests/compare_oct11.ipynb' contains helpful instructions on how to process raw
+See:
 
+```
+tests/compare_oct11.ipynb
+```
 
+This notebook shows how to:
+
+* load raw data
+* run processing steps
+* compare outputs
+
+---
