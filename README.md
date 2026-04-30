@@ -1,5 +1,5 @@
 # scintkit
-[WORK IN PROGRESS]
+[woRK IN PROGRESS]
 
 Simple tools for working with ScintPi and GNSS scintillation data.
 
