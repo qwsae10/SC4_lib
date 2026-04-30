@@ -37,7 +37,7 @@ tests/                        # test scripts and example notebooks
 Clone with git:
 
 ```bash
-git clone https://github.com/<your-username>/scintkit.git
+git clone https://github.com/qwsae10/scintkit.git
 cd scintkit
 ````
 
