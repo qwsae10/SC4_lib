@@ -18,32 +18,6 @@ import pandas as pd
 from scipy import signal
 
 
-def detect_sampling_rate(df):
-    """
-    detect the sampling rate of the data by looking at the number of samples per minute per PRN.
-    """
-    # samples per (minute, PRN)
-    counts = (
-        df
-        .groupby(['minute', 'PRN'])
-        .size()
-        .reset_index(name='n_samples')
-    )
-
-
-    n = counts.n_samples.max()
-
-    threshold = 10
-    if abs(n-600) < threshold:
-        return 600/60
-    elif abs(n-1200) < threshold:
-        return 1200/60
-    elif abs(n-2400) < threshold:
-        return 2400/60
-    elif abs(n-3000) < threshold:
-        return 3000/60
-    else:
-        return None
 
 def add_detrended_phase_exact(
     df,

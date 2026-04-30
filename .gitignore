@@ -1,0 +1,9 @@
+src/.DS_Store
+tests/data/scintpi3_20241011_1200_96.7573W_32.9919N_v326f.bin.zip 
+tests/data/scintpi3_20241011_1200_96.7573W_32.9919N_v326f_lvl3.pq 
+tests/data/scintpi3_20241011_0800_96.7573W_32.9919N_v326f.bin.zip 
+tests/data/scintpi3_20241011_0800_96.7573W_32.9919N_v326f_lvl3.pq 
+tests/data/scintpi3_20241011_0400_96.7573W_32.9920N_v326f.bin.zip 
+tests/data/scintpi3_20241011_0400_96.7573W_32.9920N_v326f_lvl3.pq 
+tests/data/scintpi3_20241011_0004_96.7572W_32.9920N_v326f.bin.zip 
+tests/data/scintpi3_20241011_0004_96.7572W_32.9920N_v326f_lvl3.pq

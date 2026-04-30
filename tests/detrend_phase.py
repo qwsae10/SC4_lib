@@ -19,6 +19,23 @@ import pandas as pd
 from scipy import signal
 
 
+
+
+def make_prn_local(dfin):
+    constellation_map = {
+        "GPS": "G",
+        "BDS": "C",
+        "GAL": "E",
+        "GLO": "R",
+        "QZSS": "J",
+        "IRNSS": "I",
+        "SBAS": "S",
+        "SBS": "S",
+    }
+    return dfin["SIG"].map(constellation_map) + dfin["SVID"].astype(int).astype(str).str.zfill(2)
+
+
+
 def add_detrended_phase_exact(
     df,
     phase_col="cph1",
@@ -27,64 +44,38 @@ def add_detrended_phase_exact(
     fs=20,
     f_N=0.1,
 ):
-    """
-    mimic the original script as closely as possible
-
-    input: raw mosaic-style dataframe with columns like
-        cons, svid, week, towe, elev, azim, snr1, cph1, cph2
-
-    output:
-        same dataframe with new column `out_col`
-    """
-
+  
     gnssdic = {0: "GPS", 1: "SBS", 2: "GAL", 3: "BDS", 6: "GLO"}
+    def repair_discontinuities_pos(vec, fs, threshold=10):
+        y = pd.Series(vec).copy()
 
-    def make_prn_local(dfin):
-        constellation_map = {
-            "GPS": "G",
-            "BDS": "C",
-            "GAL": "E",
-            "GLO": "R",
-            "QZSS": "J",
-            "IRNSS": "I",
-            "SBAS": "S",
-            "SBS": "S",
-        }
-        return dfin["SIG"].map(constellation_map) + dfin["SVID"].astype(int).astype(str).str.zfill(2)
+        window = int(10 * fs) #10sec window for median trend estimation
 
-    def repair_discontinuities(vec, threshold=10):
-        first_order = pd.DataFrame({"delt": vec.diff()})
-        first_order_full = first_order["delt"]
+        delt = y.diff()
 
-        points = first_order.resample("10s").median().shift(freq="5s")
+        trend = (
+            delt
+            .rolling(window=window, center=True, min_periods=max(3, window // 10))
+            .median()
+        )
 
-        if len(points) == 1:
-            defa = vec.copy()
-            return defa, ~(defa == defa)
+        trend = trend.bfill().ffill()
 
-        final_t = points.index[-1] + (points.index[-1] - points.index[-2])
-        final_val = points.iloc[-1] + (points.iloc[-1] - points.iloc[-2])
+        cycleslips = (delt - trend).abs() <= threshold
 
-        first_t = points.index[0] - (points.index[1] - points.index[0])
-        first_val = points.iloc[0] - (points.iloc[1] - points.iloc[0])
+        delt_clean = delt.where(cycleslips, np.nan)
 
-        points.loc[final_t] = final_val
-        points.loc[first_t] = first_val
-        points.sort_index(inplace=True)
+        if len(delt_clean) > 1:
+            delt_clean.iloc[0] = delt_clean.iloc[1]
 
-        doppler = points.delt.reindex_like(first_order_full).interpolate("time")
-        cycleslips = np.abs(doppler - first_order_full) <= threshold
+        delt_clean = delt_clean.bfill().ffill()
 
-        first_order_full = first_order_full.where(cycleslips, np.nan)
+        result = y.iloc[0] + delt_clean.cumsum()
 
-        if len(first_order_full) > 1:
-            first_order_full.iloc[0] = first_order_full.iloc[1]
+        slip_mask = ~cycleslips
+        n_slips = int(slip_mask.sum())
 
-        first_order_full = first_order_full.bfill()
-        result = np.cumsum(first_order_full)
-
-        return pd.Series(result, index=first_order_full.index), ~(cycleslips)
-
+        return pd.Series(result, index=y.index), slip_mask, n_slips
     def filter_signal_cascaded(x, f_N=0.1, fs=10):
         omega_N = 2 * np.pi * f_N
         l = 3
@@ -111,18 +102,15 @@ def add_detrended_phase_exact(
     def detrend_phase_like_original(sig, tr=10):
         sig = sig.dropna(subset=["SNR", "Elevation", "Azimuth", "Phase"])
 
-        snr = 10 ** (sig["SNR"] / 10)
-        el = sig["Elevation"]
-        az = sig["Azimuth"]
         phase = sig["Phase"]
 
-        sig_repaired, cycleslips = repair_discontinuities(phase * 2 * np.pi, threshold=tr)
+        sig_repaired, cycleslips, n_slips = repair_discontinuities_pos(phase * 2 * np.pi, fs=fs, threshold=tr)
         sig_filtered = filter_signal_cascaded(sig_repaired, f_N=f_N, fs=fs)
 
         out = pd.DataFrame(
             {
                 "dphi": sig_filtered,
-                "cycleslips": cycleslips.astype(int),
+                "n_slips": n_slips,
                 "SNR": snr,
                 "az": az.reindex(sig_repaired.index),
                 "el": el.reindex(sig_repaired.index),
@@ -178,10 +166,9 @@ def add_detrended_phase_exact(
         g = g.sort_values("datetime").copy()
 
         # original code sets datetime as index before groupby apply
-        # duplicate datetimes break reindex/interpolate logic, so keep first only
         g_unique = g.drop_duplicates(subset=["datetime"], keep="first").copy()
         g_unique = g_unique.set_index("datetime")
-
+        
         try:
             detr = detrend_phase_like_original(g_unique, tr=tr)
             detr = detr[["dphi"]].rename(columns={"dphi": out_col}).reset_index()
@@ -205,7 +192,7 @@ def add_detrended_phase_exact(
 
     out = out.sort_values("_row_id").drop(columns="_row_id")
     return out
-    # Example usage as a script.
+
 file = '/Users/isaac/Documents/scintpi3_20240511_0400_1203575.6250W_432707.1250N_v325.pq'
 
 df = pd.read_parquet(file)
@@ -215,6 +202,29 @@ df['cons'] = df['cons'].map(gnssdic_loop)
 df = df[~((df['cons'] == 'GLO') & (df['svid'] == 255))].copy()
 
 df=df.reset_index()
+#%%
+df['minbin'] = df['datetime'].dt.floor('1min')
+df['prn']=df['cons'] + df['svid'].astype(str).str.zfill(2)
+
+
+#%%
+# df has columns: 'prn', 'minbin', 'datetime'
+import pandas as pd
+
+df['datetime'] = pd.to_datetime(df['datetime'])
+
+# sort first
+df = df.sort_values(['prn', 'datetime'])
+
+# compute dt per PRN
+df['dt'] = (
+    df.groupby('prn')['datetime']
+      .diff()
+      .dt.total_seconds()
+)
+
+print(df[['prn','datetime','dt']].head())
+
 #%%
 # keep default unique row index here
 # keep datetime as a normal column

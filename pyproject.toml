@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "scintkit"
+version = "0.1.0"
+description = "Simple tools for working with ScintPi data."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [
+  { name = "ScintPi contributors" },
+]
+dependencies = [
+  "numpy",
+  "pandas",
+  "pyarrow",
+  "scipy",
+]
+
+[project.optional-dependencies]
+dev = [
+  "matplotlib",
+  "pytest",
+]
+
+[tool.setuptools]
+packages = [
+  "scintkit",
+  "scintkit.pipelines",
+  "scintkit.preprocessing",
+  "scintkit.reading",
+  "scintkit.services",
+  "scintkit.utils",
+]
+
+[tool.setuptools.package-dir]
+scintkit = "src/scintkit"
