@@ -171,10 +171,12 @@ def highpass_phase(
             df.iloc[pos, df.columns.get_loc(mask_col)] = edge_gap_mask
             
 
-        except Exception:
+        except Exception as exc:
+            print(f"highpass_phase failed for PRN {prn}: {type(exc).__name__}: {exc}")
             df.iloc[pos, df.columns.get_loc(out_col)] = np.nan
             df.iloc[pos, df.columns.get_loc(slip_col)] = False
             df.iloc[pos, df.columns.get_loc(mask_col)] = False
+            raise
 
     return df
 
