@@ -27,13 +27,11 @@ READERS = {
 
 def drop_unnecessary_columns(df: pd.DataFrame) -> pd.DataFrame:
     #to reduce file size, drop columns that are not needed for scintillation analysis. These can be re-added later if needed.
-    df=df.copy()
     cols=['sats','pst1','pst2','rst1','rst2','lck1','lck2']
     df=df.drop(columns=cols, errors='ignore')
     df=df[df.svid!=255]
     df["elev"] = df["elev"].astype("uint8")   # 0–90
     df["azim"] = df["azim"].astype("uint16")  # 0–359 or 0–360
-    df=df[df['elev']>10]
     return df
 
 def get_version(path: str | os.PathLike) -> str | None:
