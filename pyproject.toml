@@ -32,7 +32,7 @@ packages = [
   "scintkit.preprocessing",
   "scintkit.reading",
   "scintkit.services",
-  "scintkit.utils",
+  ,
 ]
 
 [tool.setuptools.package-dir]
