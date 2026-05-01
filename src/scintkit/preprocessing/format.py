@@ -16,7 +16,18 @@ def make_prn(dfin):
         "SBS": "S",
     }
     return dfin["cons"].map(constellation_map) + dfin["svid"].astype(int).astype(str).str.zfill(2) 
-                                                                                               
+
+
+def zero_cph_snr_to_nan(df):
+    df = df.copy()
+    cols = [
+        col for col in df.columns
+        if (col.startswith("cph") or col.startswith("snr")) and col[3:].isdigit()
+    ]
+    if cols:
+        df[cols] = df[cols].replace(0, np.nan)
+    return df    
+                                                                                 
 def temp_formating(df):
     df= df.copy()
 
@@ -32,6 +43,7 @@ def temp_formating(df):
     df['minbin'] = df['datetime'].dt.floor('1min')
     df['prn']=make_prn(df)
     df=add_sigs(df)
+    df=zero_cph_snr_to_nan(df)
     return df
 
 
@@ -76,8 +88,11 @@ def add_sigs(df):
     if 'sig_1' not in df.columns:
         #scintpi3 doesn't have sig columns, but we can infer them from cons and svid. 
         #hardcoded for now, but could be made more flexible if needed
-        df['sig_1'] = df.apply(lambda row: hardcode_sig_dict.get(row['cons'], {}).get(1, None), axis=1)
-        df['sig_2'] = df.apply(lambda row: hardcode_sig_dict.get(row['cons'], {}).get(2, None), axis=1)
+        sig1_map = {k: v[1] for k, v in hardcode_sig_dict.items()}
+        sig2_map = {k: v[2] for k, v in hardcode_sig_dict.items()}
+
+        df['sig_1'] = df['cons'].map(sig1_map)
+        df['sig_2'] = df['cons'].map(sig2_map)
 
     df['freq_1'] = df['sig_1'].map(lambda x: mapping.get(x, (None, None))[0])
     df['freq_2'] = df['sig_2'].map(lambda x: mapping.get(x, (None, None))[0])
@@ -91,6 +106,5 @@ def make_1min(df,method='first'):
     Default method is 'first', but can be changed to any valid pandas aggregation method (e.g., 'mean', 'max', 'min').
     """
 
-    df = df.copy()
     df=df.groupby(['minbin', 'prn']).agg(method).reset_index()
     return df

@@ -63,8 +63,6 @@ def add_products(df,verbose=False):
     The function groups the data by PRN and 1-minute bins to compute these products, and then merges the results back to the original dataframe in the same time bins.
     """
 
-    df = df.copy()
-
     if verbose:
         print("Ensuring format...")
     df=temp_formating(df)

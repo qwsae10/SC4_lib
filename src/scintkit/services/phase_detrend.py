@@ -93,11 +93,14 @@ def filter_signal_cascaded(x, f_N=0.1, fs=10):
         bz2, az2 = signal.bilinear(num, den2, fs)
         bz3, az3 = signal.bilinear(num, den3, fs)
 
-        y_stage1 = signal.filtfilt(bz1, az1, x)
-        y_stage2 = signal.filtfilt(bz2, az2, y_stage1)
-        y_stage3 = signal.filtfilt(bz3, az3, y_stage2)
+        y_stage1 = signal.lfilter(bz1, az1, x)
+        y_stage2 = signal.lfilter(bz2, az2, y_stage1)
+        y_stage3 = signal.lfilter(bz3, az3, y_stage2)
 
         return y_stage3
+
+
+
 
 def highpass_phase(
     df,
@@ -129,7 +132,12 @@ def highpass_phase(
 
         try:
             finite = np.isfinite(phase)
+            if not finite.any():
+                continue
+
             phase_s = pd.Series(phase)
+            phase_s = phase_s.interpolate(limit_direction="both")
+
 
             repaired, cycleslips, _ = repair_discontinuities_pos(
                 phase_s * 2 * np.pi,
@@ -207,18 +215,16 @@ def highpass_all_phases(df):
             continue
         in_col = f"cph{i}"
         out_col = f"detrended_cph{i}"
-        df = highpass_phase(df, in_col=in_col, out_col=out_col)
-    return df     
+        frequency_col = f"freq_{i}"
+
+        scaled_tr = 1*df[frequency_col].median()/1575.42 if frequency_col in df.columns else 1
+
+        df = highpass_phase(df, in_col=in_col, out_col=out_col, tr=scaled_tr)
+    return df
 
 
-
-
-def estimate_clock(df):
+def estimate_clock(df, elev_mask=0):
     df = df.copy()
-
-    mask=20
-    
-    df=df[(df['elev']>mask)&(df['elev']<90)]
 
     value_cols = []
 
@@ -235,8 +241,11 @@ def estimate_clock(df):
         df["clock_term"] = np.nan
         return df
 
+    # only use high-elevation data to estimate clock
+    clock_df = df[(df["elev"] > elev_mask) & (df["elev"] < 90)]
+
     median_curve = (
-        df.melt(
+        clock_df.melt(
             id_vars="datetime",
             value_vars=value_cols
         )
@@ -244,6 +253,7 @@ def estimate_clock(df):
         .median()
     )
 
+    # apply clock estimate back to full df
     df["clock_term"] = df["datetime"].map(median_curve)
 
     return df

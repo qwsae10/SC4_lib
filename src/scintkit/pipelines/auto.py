@@ -75,12 +75,11 @@ def process(flist, verbose=False):
         if verbose:
             print(f"Reading and formatting parquet file: {pq_fname}...")
         df = pd.read_parquet(pq_fname)
-        df = temp_formating(df)
-
         df = add_products(df, verbose=verbose)
         df = make_1min(df)
 
-        outname = str(pq_fname).replace(".pq", "_lvl3.pq").replace(".parquet", "_lvl3.pq")
+
+        outname = str(pq_fname).replace("_lvl0", "_lvl3")
 
         df.to_parquet(outname)
         converted_files.append(outname)
