@@ -13,11 +13,12 @@ authors = [
   { name = "ScintPi contributors" },
 ]
 dependencies = [
-  "numpy",
-  "pandas",
-  "pyarrow",
-  "scipy",
+  "numpy>=2.2,<3",
+  "pandas>=2.2,<3",
+  "pyarrow>=19,<20",
+  "scipy>=1.15,<2",
 ]
+
 
 [project.optional-dependencies]
 dev = [
