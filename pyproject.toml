@@ -31,8 +31,7 @@ packages = [
   "scintkit.pipelines",
   "scintkit.preprocessing",
   "scintkit.reading",
-  "scintkit.services",
-  ,
+  "scintkit.services"
 ]
 
 [tool.setuptools.package-dir]
