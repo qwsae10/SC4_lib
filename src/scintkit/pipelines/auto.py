@@ -31,10 +31,23 @@ def get_type(f):
 
 def process(flist, verbose=False):
     """
-    Temporary wrapper to run full pipeline on list of files and make scintillation index product files (lvl3)
+    Wrapper to run full pipeline on list of files and make high level scintillation index product files (lvl3)
     Inputs:
     - flist: list of file paths to process. Can be .bin, .bin.zip, or .pq files. Output files will have same relative path but with _lvl3.pq suffix.
     - verbose: if True, print progress messages.
+    Outputs:
+    - list of output file paths that were created.
+
+    Each output file 'lvl3' will be 1 minute rate with then following added products:
+
+    - tec12 and tec13: differences between detrended phases to estimate TEC (WIP)
+    - sigma_phi_1, sigma_phi_2, sigma_phi_3: standard deviation of detrended phases with clock noise removed, for each frequency
+    - n_1, n_2, n_3: number of valid samples for each frequency
+    - n_cycleslip_1, n_cycleslip_2, n_cycleslip_3: number of detected cycle slips for each phase
+    - quality_1, quality_2, quality_3: binary flags indicating potential quality issues (0 means no issue, 1 or more means issue) 
+    - s4_1, s4_2, s4_3: S4 index computed from SNR values for each frequency
+    - s4_corrected_1, s4_corrected_2, s4_corrected_3: S4 index corrected for bias based on Van Dierendonck (1993) method
+    - clock_term: estimated common clock term (in units of radians/frequency) across all frequencies, used for detrending phases to compute sigma_phi 
 
     """
 
