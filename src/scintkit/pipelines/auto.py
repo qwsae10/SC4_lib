@@ -1,6 +1,6 @@
 
 import os
-from scintkit.preprocessing.format import temp_formating,make_1min
+from scintkit.preprocessing.format import temp_formating,make_1min,make_1sec
 from scintkit.services.compute import add_products
 from scintkit.services.convert_to_parquet import process_one
 
@@ -29,7 +29,7 @@ def get_type(f):
     return None
 
 
-def process(flist, verbose=False):
+def process(flist, verbose=False,end='lvl3'):
     """
     Wrapper to run full pipeline on list of files and make high level scintillation index product files (lvl3)
     Inputs:
@@ -89,10 +89,15 @@ def process(flist, verbose=False):
             print(f"Reading and formatting parquet file: {pq_fname}...")
         df = pd.read_parquet(pq_fname)
         df = add_products(df, verbose=verbose)
-        df = make_1min(df)
+        
 
+        if end=='lvl2':
+            df = make_1sec(df)
+            outname = str(pq_fname).replace("_lvl0", "_lvl2")
+        if end=='lvl3':
+            df = make_1min(df)
+            outname = str(pq_fname).replace("_lvl0", "_lvl3")
 
-        outname = str(pq_fname).replace("_lvl0", "_lvl3")
 
         df.to_parquet(outname)
         converted_files.append(outname)

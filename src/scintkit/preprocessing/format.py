@@ -99,6 +99,17 @@ def add_sigs(df):
 
     return df
 
+
+def make_1sec(df):
+    """
+    Resample the dataframe to 1 second intervals, grouping by 'datetime' and 'prn'.
+    Default method is 'first', but can be changed to any valid pandas aggregation method (e.g., 'mean', 'max', 'min').
+    """
+
+    df['secbin'] = df['datetime'].dt.floor('1s')
+    df=df.groupby(['secbin', 'prn']).first().reset_index()
+    return df
+
 def make_1min(df,method='first'):
 
     """
