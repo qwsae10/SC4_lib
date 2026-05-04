@@ -44,7 +44,7 @@ def make_prn_local(dfin):
     return dfin["SIG"].map(constellation_map) + dfin["SVID"].astype(int).astype(str).str.zfill(2)
 
 
-def repair_discontinuities_pos(vec, fs, threshold=10):
+def repair_discontinuities_pos(vec, fs, threshold=10,svid=None):
     y = pd.Series(vec).copy()
 
     window = int(10 * fs)
@@ -61,7 +61,11 @@ def repair_discontinuities_pos(vec, fs, threshold=10):
 
     good = ((delt - trend).abs() <= threshold).fillna(True)
     slip_mask = ~good
-
+    n_slips = int(slip_mask.sum())
+ 
+    if n_slips/len(vec) > 0.2 and len(vec) > 10:
+        print(f"many cycle slips detected for SVID {svid}, something might be wrong with the data")
+        return pd.Series(vec), slip_mask, n_slips
     delt_clean = delt.where(good, np.nan)
 
     if len(delt_clean) > 1:
@@ -71,7 +75,6 @@ def repair_discontinuities_pos(vec, fs, threshold=10):
 
     result = y.iloc[0] + delt_clean.cumsum()
 
-    n_slips = int(slip_mask.sum())
 
     return pd.Series(result, index=y.index), slip_mask, n_slips
 
@@ -110,7 +113,6 @@ def highpass_phase(
     fs=None,
     f_N=0.1
 ):
-    df = df.copy()
 
     slip_col = out_col.replace("detrended", "cycleslips")
     df[out_col] = np.nan
@@ -143,6 +145,7 @@ def highpass_phase(
                 phase_s * 2 * np.pi,
                 fs=fs,
                 threshold=tr,
+                svid=prn
             )
 
             slip_mask = cycleslips.to_numpy(dtype=bool)
@@ -209,9 +212,8 @@ def make_edge_gap_mask(time, phase, fs, gap_seconds=1, pad_seconds=180):
 
     return mask
 
-def highpass_all_phases(df):
+def highpass_all_phases(df,fs=None):
     #wrapper to add detrended phases for all available phase columns
-    df=df.copy()
     for i in range(1, 4):
         if f"cph{i}" not in df.columns:
             continue
@@ -221,12 +223,11 @@ def highpass_all_phases(df):
 
         scaled_tr = 1*df[frequency_col].median()/1575.42 if frequency_col in df.columns else 1
 
-        df = highpass_phase(df, in_col=in_col, out_col=out_col, tr=scaled_tr)
+        df = highpass_phase(df, in_col=in_col, out_col=out_col, tr=scaled_tr, fs=fs)
     return df
 
 
 def estimate_clock(df, elev_mask=0):
-    df = df.copy()
 
     value_cols = []
 
@@ -261,7 +262,6 @@ def estimate_clock(df, elev_mask=0):
     return df
 
 def clock_correction(df,out_col="detrended_noclk_cph"):
-    df = df.copy()
 
     for i in [1, 2, 3]:
         cph_col = f"detrended_cph{i}"
@@ -273,9 +273,10 @@ def clock_correction(df,out_col="detrended_noclk_cph"):
     return df
 
 
-def process_phases(df):
-    df = df.copy()
-    df = highpass_all_phases(df)
+def process_phases(df,fs=None):
+    fs=detect_sampling_rate(df) if fs is None else fs
+
+    df = highpass_all_phases(df,fs)
     df = estimate_clock(df)
     df = clock_correction(df)
 

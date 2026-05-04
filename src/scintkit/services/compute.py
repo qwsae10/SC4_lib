@@ -2,10 +2,65 @@
 import pandas as pd
 import numpy as np
 
-from scintkit.services.phase_detrend import process_phases
+from scintkit.services.phase_detrend import process_phases,repair_discontinuities_pos,detect_sampling_rate
 from scintkit.preprocessing.format import temp_formating
-def compute_tec(f1,f2):
-    return f1 - f2
+
+
+import numpy as np
+
+
+def carrier_phase_tec(phi1_rad, phi2_rad, f1_hz, f2_hz):
+    c = 299792458  # m/s
+
+    lambda1 = c / f1_hz
+    lambda2 = c / f2_hz
+
+    phi1_m = phi1_rad * lambda1 / (2 * np.pi)
+    phi2_m = phi2_rad * lambda2 / (2 * np.pi)
+
+    tec_factor = (f1_hz**2 * f2_hz**2) / (40.3 * (f1_hz**2 - f2_hz**2))
+
+    return tec_factor * (phi1_m - phi2_m)
+
+
+def pseudorange_tec(P1_m, P2_m, f1_hz, f2_hz):
+    tec_factor = (f1_hz**2 * f2_hz**2) / (40.3 * (f1_hz**2 - f2_hz**2))
+
+    return tec_factor * (P2_m - P1_m)
+
+
+def add_tec_columns(df, pair="13"):
+
+    N1 = pair[0]
+    N2 = pair[1]
+
+    f1_hz = df[f"freq{N1}"] * 1e6
+    f2_hz = df[f"freq{N2}"] * 1e6
+    carrier = carrier_phase_tec(
+            phi1_rad=df[f"cph{N1}"],
+            phi2_rad=df[f"cph{N2}"],
+            f1_hz=f1_hz,
+            f2_hz=f2_hz,
+        )
+
+
+    pseudo=pseudorange_tec(
+        P1_m=df[f"rng{N1}"],
+        P2_m=df[f"rng{N2}"],
+        f1_hz=f1_hz,
+        f2_hz=f2_hz,
+    )
+
+    #cyclslip correction
+    carrier=repair_discontinuities_pos(carrier, fs=fs, threshold=1)[0]
+
+
+    df[f"tec_cph{pair}"] = carrier
+    df[f"tec_rng{pair}"] =pseudo
+
+    return df
+    
+
 
 def compute_s4(snr):
     snr = snr.dropna()
@@ -41,6 +96,7 @@ def compute_n_cycleslips(cycleslips):
     return int(cycleslips.fillna(False).sum())
 
 
+
 def compute_n_samples(col):
     return int(col.notna().sum())
 
@@ -70,8 +126,15 @@ def add_products(df,verbose=False):
         print("Processing phases...")   
     df = process_phases(df)
 
+    fs=detect_sampling_rate(df)
+    
     if verbose:
         print("Computing TEC...")
+
+    
+    df=add_tec_columns(df,fs=fs, pair="12")
+    df=add_tec_columns(df,fs=fs, pair="13")
+
     if ('detrended_cph1' in df.columns) and ('detrended_cph2' in df.columns):
         df['tec12'] = compute_tec(df['detrended_cph1'], df['detrended_cph2'])
 
