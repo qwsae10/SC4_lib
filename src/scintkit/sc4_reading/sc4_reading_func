@@ -1,4 +1,5 @@
 from pathlib import Path
+import shutil
 import subprocess as sp
 
 def binary_to_clean_txt(binary_file, output_dir=None, keep_raw_txt=False, overwrite=False):
@@ -11,20 +12,24 @@ def binary_to_clean_txt(binary_file, output_dir=None, keep_raw_txt=False, overwr
     
     if output_dir is None:
         output_dir = Path.cwd()
-    output_dir = Path(output_dir).resolve()    
+    output_dir = Path(output_dir).resolve()
+    working_binary = output_dir / binary_file.name
 
-    commands = ["rxtools_exec.sh", "bin2asc", "-f",str(binary_file), "--extractGenMeas"]
+    if not working_binary.exists():
+        shutil.copy2(binary_file, working_binary)    
+
+    commands = ["rxtools_exec.sh", "bin2asc", "-f", working_binary.name, "--extractGenMeas"]
     result = sp.run(commands, capture_output=True, text=True, cwd=output_dir)
     print("RXTools finished.")
     if result.returncode != 0:
-        raise RuntimeError(f"Error occurred while converting {binary_file} to text: {result.stderr}")
+        raise RuntimeError(f"Error occurred while converting {working_binary} to text: {result.stderr}")
     
     print(result.stdout)
     print(result.stderr)
 
     txt_files = list(
     output_dir.glob(
-        f"{binary_file.name}*measurements.txt"
+        f"{working_binary.name}*measurements.txt"
     )
 )
     if not txt_files:
