@@ -2,7 +2,7 @@ from pathlib import Path
 import shutil
 import subprocess as sp
 
-def binary_to_clean_txt(binary_file, output_dir=None, keep_raw_txt=False, overwrite=False):
+def binary_to_clean_txt(binary_file, output_dir=None, keep_raw_txt=False, overwrite=False, verbose=True):
     #Method to convert Scintpi binary files to cleaned txt files.
 
     binary_file = Path(binary_file).resolve()
