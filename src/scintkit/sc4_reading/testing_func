@@ -1,0 +1,118 @@
+from pathlib import Path
+import subprocess as sp
+import shutil
+
+
+def binary_to_clean_txt(binary_file,
+                        scratch_dir="/home/dal674840/scratch",
+                        overwrite=False):
+    """
+    Convert a ScintPi binary file to a cleaned measurements txt file.
+
+    Parameters
+    ----------
+    binary_file : str or Path
+        Path to .26_, .25_, etc. binary file
+
+    scratch_dir : str or Path
+        Working directory where RXTools runs
+
+    overwrite : bool
+        Recreate cleaned file if it already exists
+
+    Returns
+    -------
+    Path
+        Path to cleaned txt file
+    """
+
+    # ---------------------------
+    # Step 1: Validate input
+    # ---------------------------
+    binary_file = Path(binary_file).resolve()
+
+    if not binary_file.exists():
+        raise FileNotFoundError(
+            f"Binary file not found:\n{binary_file}"
+        )
+
+    scratch_dir = Path(scratch_dir).resolve()
+    scratch_dir.mkdir(parents=True, exist_ok=True)
+
+    # ---------------------------
+    # Step 2: Copy binary to scratch
+    # ---------------------------
+    scratch_binary = scratch_dir / binary_file.name
+
+    if not scratch_binary.exists():
+        shutil.copy2(binary_file, scratch_binary)
+
+    # ---------------------------
+    # Step 3: Run RXTools
+    # ---------------------------
+    cmd = [
+        "rxtools_exec.sh",
+        "bin2asc",
+        "-f",
+        scratch_binary.name,
+        "--extractGenMeas"
+    ]
+
+    result = sp.run(
+        cmd,
+        cwd=scratch_dir,
+        capture_output=True,
+        text=True
+    )
+
+    if result.returncode != 0:
+        raise RuntimeError(
+            f"RXTools failed:\n{result.stderr}"
+        )
+
+    # ---------------------------
+    # Step 4: Locate measurements file
+    # ---------------------------
+    measurements_file = (
+        scratch_dir /
+        f"{scratch_binary.name}__measurements.txt"
+    )
+
+    if not measurements_file.exists():
+        raise FileNotFoundError(
+            f"Measurements file not found:\n{measurements_file}"
+        )
+
+    # ---------------------------
+    # Step 5: Create cleaned file
+    # ---------------------------
+    clean_file = (
+        scratch_dir /
+        f"{scratch_binary.name}__measurements_F.txt"
+    )
+
+    if clean_file.exists() and not overwrite:
+        return clean_file
+
+    # Python version of:
+    # grep -vE '\bError\b|,,'
+    with open(measurements_file, "r") as fin, \
+         open(clean_file, "w") as fout:
+
+        for line in fin:
+
+            if "Error" in line:
+                continue
+
+            if ",," in line:
+                continue
+
+            fout.write(line)
+
+    return clean_file
+
+clean_txt = binary_to_clean_txt(
+    "/home/dal674840/example_file/cg01001a00.26_"
+)
+
+print(clean_txt)
