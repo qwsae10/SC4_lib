@@ -48,7 +48,7 @@ def binary_to_clean_txt(binary_file, output_dir=None, keep_raw_txt=False, overwr
     return clean_file
 clean_file = binary_to_clean_txt(
     "/home/dal674840/example_file/cg01001a00.26_",
-    output_dir=Path.cwd()
+    output_dir="/scratch/ganymede2/dal674840"
 )
 
 print(clean_file)
