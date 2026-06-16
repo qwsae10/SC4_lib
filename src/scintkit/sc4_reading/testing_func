@@ -75,7 +75,7 @@ def binary_to_clean_txt(binary_file,
     # ---------------------------
     measurements_file = (
         scratch_dir /
-        f"{scratch_binary.name}__measurements.txt"
+        f"{scratch_binary.name}_measurements.txt"
     )
 
     if not measurements_file.exists():
