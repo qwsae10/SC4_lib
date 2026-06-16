@@ -20,12 +20,10 @@ def binary_to_clean_txt(binary_file, output_dir=None, keep_raw_txt=False, overwr
 
     commands = ["rxtools_exec.sh", "bin2asc", "-f", working_binary.name, "--extractGenMeas"]
     result = sp.run(commands, capture_output=True, text=True, cwd=output_dir)
-    print("RXTools finished.")
+    
     if result.returncode != 0:
         raise RuntimeError(f"Error occurred while converting {working_binary} to text: {result.stderr}")
     
-    print(result.stdout)
-    print(result.stderr)
 
     txt_files = list(
     output_dir.glob(
