@@ -8,3 +8,5 @@ def cleanup_txt_files(filepath, verbose=True):
             file_path.unlink()
         if verbose:
             print(f"Deleted: {file_path.name}")
+
+task = cleanup_txt_files("/scratch/ganymede2/dal674840")
