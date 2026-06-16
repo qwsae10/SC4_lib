@@ -10,7 +10,7 @@ def binary_to_clean_txt(binary_file, output_dir=None, keep_raw_txt=False, overwr
         raise FileNotFoundError(binary_file)
     if output_dir is None:
         output_dir = binary_file.parent
-    commands = ["bin2asc", "-f",str(binary_file), "--extractGenMeas"]
+    commands = ["rxtools_exec.sh", "bin2asc", "-f",str(binary_file), "--extractGenMeas"]
     result = sp.run(commands, capture_output=True, text=True)
     if result.returncode != 0:
         raise RuntimeError(f"Error occurred while converting {binary_file} to text: {result.stderr}")
