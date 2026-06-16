@@ -8,15 +8,48 @@ def binary_to_clean_txt(binary_file, output_dir=None, keep_raw_txt=False, overwr
 
     if not binary_file.exists():
         raise FileNotFoundError(binary_file)
+    
     if output_dir is None:
-        output_dir = binary_file.parent
+        output_dir = Path.cwd()
+    output_dir = Path(output_dir).resolve()    
+
     commands = ["rxtools_exec.sh", "bin2asc", "-f",str(binary_file), "--extractGenMeas"]
-    result = sp.run(commands, capture_output=True, text=True)
+    result = sp.run(commands, capture_output=True, text=True, cwd=output_dir)
+    print("RXTools finished.")
     if result.returncode != 0:
         raise RuntimeError(f"Error occurred while converting {binary_file} to text: {result.stderr}")
-    return result.stdout
+    
     print(result.stdout)
     print(result.stderr)
 
-df = binary_to_clean_txt("/home/dal674840/example_file/cg01001a00.26_")
-print(df)
+    txt_files = list(
+    output_dir.glob(
+        f"{binary_file.name}*measurements.txt"
+    )
+)
+    if not txt_files:
+        raise FileNotFoundError(
+        "No measurements file produced by RXTools"
+    )
+
+    measurement_file = txt_files[0]
+
+    clean_file = measurement_file.with_name(
+    measurement_file.stem + "_F.txt"
+    )
+    with open(measurement_file, "r") as fin, open(clean_file, "w") as fout:
+        for line in fin:
+            if "Error" in line:
+                continue
+            if ",," in line:
+                continue
+            fout.write(line)
+
+    return clean_file
+clean_file = binary_to_clean_txt(
+    "/home/dal674840/example_file/cg01001a00.26_",
+    output_dir=Path.cwd()
+)
+
+print(clean_file)
+
