@@ -2,7 +2,7 @@ from pathlib import Path
 import shutil
 import subprocess as sp
 
-def binary_to_clean_txt(binary_file, output_dir=None, keep_raw_txt=False, overwrite=False, verbose=True):
+def binary_to_clean_txt(binary_file, work_dir=None, output_dir=None, keep_raw_txt=False, overwrite=False, verbose=True):
     #Method to convert Scintpi binary files to cleaned txt files.
 
     binary_file = Path(binary_file).resolve()
@@ -12,21 +12,30 @@ def binary_to_clean_txt(binary_file, output_dir=None, keep_raw_txt=False, overwr
     
     if output_dir is None:
         output_dir = Path.cwd()
+    if output_dir is None:
+        output_dir = Path.cwd()
+
+    if work_dir is None:
+        work_dir = output_dir
+
     output_dir = Path(output_dir).resolve()
-    working_binary = output_dir / binary_file.name
+    work_dir = Path(work_dir).resolve()
+
+    working_binary = work_dir / binary_file.name    
+ 
 
     if not working_binary.exists():
         shutil.copy2(binary_file, working_binary)    
 
     commands = ["rxtools_exec.sh", "bin2asc", "-f", working_binary.name, "--extractGenMeas"]
-    result = sp.run(commands, capture_output=True, text=True, cwd=output_dir)
+    result = sp.run(commands, capture_output=True, text=True, cwd=work_dir)
     
     if result.returncode != 0:
         raise RuntimeError(f"Error occurred while converting {working_binary} to text: {result.stderr}")
     
 
     txt_files = list(
-    output_dir.glob(
+    work_dir.glob(
         f"{working_binary.name}*measurements.txt"
     )
 )
@@ -37,7 +46,7 @@ def binary_to_clean_txt(binary_file, output_dir=None, keep_raw_txt=False, overwr
 
     measurement_file = txt_files[0]
 
-    clean_file = measurement_file.with_name(
+    clean_file = output_dir / (
     measurement_file.stem + "_F.txt"
     )
     with open(measurement_file, "r") as fin, open(clean_file, "w") as fout:
@@ -51,7 +60,8 @@ def binary_to_clean_txt(binary_file, output_dir=None, keep_raw_txt=False, overwr
     return clean_file
 clean_file = binary_to_clean_txt(
     "/home/dal674840/example_file/cg01001a00.26_",
-    output_dir="/scratch/ganymede2/dal674840"
+    work_dir="/scratch/ganymede2/dal674840"
+    output_dir="/home/dal674840/example_file"
 )
 
 print(clean_file)
