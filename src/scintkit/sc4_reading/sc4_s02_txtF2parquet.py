@@ -58,6 +58,6 @@ for daystring in np.arange(53,55+1):
             UTD01 = pd.concat(map(reading__measurements_file, lvl0_files))
         except:
             continue
-pq_df = reading__measurements_file("/scratch/ganymede2/dal674840/cg01001a00.26__measurements_F.txt")
+pq_df = reading__measurements_file("/home/dal674840/example_file/cg01001a00.26__measurements_F.txt")
 
 print(pq_df)
