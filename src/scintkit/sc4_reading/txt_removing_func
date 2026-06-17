@@ -9,4 +9,4 @@ def cleanup_txt_files(filepath, verbose=True):
         if verbose:
             print(f"Deleted: {file_path.name}")
 
-task = cleanup_txt_files("/home/dal674840/example_file")
+task = cleanup_txt_files("/scratch/ganymede2/dal674840")
