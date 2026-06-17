@@ -60,7 +60,7 @@ def binary_to_clean_txt(binary_file, work_dir=None, output_dir=None, keep_raw_tx
     return clean_file
 clean_file = binary_to_clean_txt(
     "/home/dal674840/example_file/cg01001a00.26_",
-    work_dir="/scratch/ganymede2/dal674840"
+    work_dir="/scratch/ganymede2/dal674840",
     output_dir="/home/dal674840/example_file"
 )
 
