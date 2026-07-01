@@ -1,0 +1,10 @@
+from scintkit.pipelines.auto import process
+
+outputs = process(
+    "/Users/dal674840/scintkit/src/scintkit/sc4_reading/sc4_lvl0_001_2026_welev_sc000_v000_lvl0.parquet",
+    verbose=True,
+    mode="both"
+)
+
+print(outputs)
+
