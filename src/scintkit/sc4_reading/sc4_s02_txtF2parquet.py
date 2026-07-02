@@ -43,7 +43,7 @@ def reading__measurements_file(files,redo=False): #converts text to data frame
     df.reset_index(inplace=True)
     df.set_index('datetime',inplace=True)
     df.to_parquet(df_output)
-    return df
+    return df, df_output
 
 for daystring in np.arange(53,55+1):
     for letter in range(ord('a'), ord('z') + 1):
