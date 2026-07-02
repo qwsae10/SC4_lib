@@ -232,7 +232,7 @@ def pq_reshaping_lvl0(parquet_file, output_dir=None):
 
     outfile = (
         output_dir /
-        f"sc4_noelev_{first_time.dayofyear:03d}_{first_time.year:04d}_lvl0.parquet"
+        f"{parquet_file.stem}_noelev_lvl0.parquet"
     )
 
     lvl0.to_parquet(outfile, index=False)
