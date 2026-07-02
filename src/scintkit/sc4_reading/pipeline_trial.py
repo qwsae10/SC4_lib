@@ -48,7 +48,7 @@ def run_pipeline(
     mearem_dir.mkdir(parents=True, exist_ok=True)
     lvl0_dir.mkdir(parents=True, exist_ok=True)
 
-    binary_files = sorted(binary_dir.glob("*.26_"))
+    binary_files = sorted(binary_dir.glob("*.??_"))
 
     print(f"\nFound {len(binary_files)} binary files.\n")
 
