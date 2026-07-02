@@ -1,5 +1,6 @@
 from pathlib import Path
 import shutil
+import traceback
 
 from sc4_reading_func import binary_to_clean_txt
 from sc4_s02_txtF2parquet import reading__measurements_file
@@ -127,6 +128,7 @@ def run_pipeline(
             failed.append(binary_file.name)
 
             print("✗ Failed")
+            traceback.print_exc()
             print(e)
 
     print("\n" + "=" * 80)
