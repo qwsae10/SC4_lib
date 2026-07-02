@@ -6,6 +6,7 @@ import os
 import sys
 #import scipy.interpolate
 import pandas as pd
+from pathlib import Path
 
 print("checking libs")
 
@@ -21,7 +22,7 @@ def reading__measurements_file(files,redo=False): #converts text to data frame
 
     if os.path.exists(df_output) and not(redo):
         print(df_output+' already exists, using it')
-        return pd.read_parquet(df_output)
+        return pd.read_parquet(df_output), Path(df_output)
     print(df_output+' doesnt exist, creating new file')
    # cols=[1,2,3,4,7,8,9] #columns
     cols=[0,1,2,3,5,6,8] #columns \nt
@@ -43,7 +44,7 @@ def reading__measurements_file(files,redo=False): #converts text to data frame
     df.reset_index(inplace=True)
     df.set_index('datetime',inplace=True)
     df.to_parquet(df_output)
-    return df, df_output
+    return df, Path(df_output)
 
 for daystring in np.arange(53,55+1):
     for letter in range(ord('a'), ord('z') + 1):
