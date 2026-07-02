@@ -75,7 +75,7 @@ def run_pipeline(
     print("\nPipeline completed.")
 
 run_pipeline(
-    binary_dir="/home/dal674840/scratch/binary_files",
+    binary_dir="/home/dal674840/scratch",
     txt_dir="/home/dal674840/scratch/txt_files",
     mearem_dir="/home/dal674840/scratch/mearem_parquet",
     lvl0_dir="/home/dal674840/scratch/lvl0_parquet"
