@@ -107,4 +107,4 @@ run_sp3_pipeline(
     parquet_dir="/home/dal674840/scratch/lvl0_parquet",
     sp3_dir="/home/dal674840/scratch",
     output_dir="/home/dal674840/scratch/lvl0_welev_parquet",
-)            
+)
