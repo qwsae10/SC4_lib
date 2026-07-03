@@ -28,7 +28,7 @@ def pseudorange_tec(P1_m, P2_m, f1_hz, f2_hz):
 
     return tec_factor * (P2_m - P1_m)/1e16
 
-def add_tec_columns(df, pair="13", fs=None):
+'''def add_tec_columns(df, pair="13", fs=None):
     #df = df.reset_index(drop=True).copy()
     pass
 
@@ -95,7 +95,94 @@ def add_tec_columns(df, pair="13", fs=None):
         )
     )
 
-    return out
+    return out'''
+
+#Added by Priya 
+
+def add_tec_columns(df, pair="13", fs=None):
+
+    # Create output columns if they don't already exist
+    df[f"tec_cph{pair}"] = np.nan
+    df[f"tec_rng{pair}"] = np.nan
+
+    N1 = pair[0]
+    N2 = pair[1]
+
+    for key, idx in df.groupby("prn", sort=False).groups.items():
+
+        g = df.loc[idx]
+
+        phi1 = g[f"cph{N1}"]
+        phi2 = g[f"cph{N2}"]
+        rng1 = g[f"rng{N1}"]
+        rng2 = g[f"rng{N2}"]
+
+        # ----------------------------
+        # Carrier TEC
+        # ----------------------------
+        if phi1.isna().all() or phi2.isna().all():
+
+            carrier = np.full(len(g), np.nan)
+            n_slip_carrier = 0
+
+        else:
+
+            f1_hz = g[f"freq_{N1}"] * 1e6
+            f2_hz = g[f"freq_{N2}"] * 1e6
+
+            carrier = carrier_phase_tec(
+                phi1_cyc=phi1,
+                phi2_cyc=phi2,
+                f1_hz=f1_hz,
+                f2_hz=f2_hz,
+            )
+
+            carrier, _, n_slip_carrier = repair_discontinuities_pos(
+                carrier,
+                fs=fs,
+                threshold=1,
+                svid=key,
+                verbose=True,
+            )
+
+            # Same behaviour as original code
+            carrier = carrier - np.nanmean(carrier)
+
+        # ----------------------------
+        # Pseudorange TEC
+        # ----------------------------
+        if rng1.isna().all() or rng2.isna().all():
+
+            pseudo = np.full(len(g), np.nan)
+            n_slip_pseudo = 0
+
+        else:
+
+            f1_hz = g[f"freq_{N1}"] * 1e6
+            f2_hz = g[f"freq_{N2}"] * 1e6
+
+            pseudo = pseudorange_tec(
+                P1_m=rng1,
+                P2_m=rng2,
+                f1_hz=f1_hz,
+                f2_hz=f2_hz,
+            )
+
+            pseudo, _, n_slip_pseudo = repair_discontinuities_pos(
+                pseudo,
+                fs=fs,
+                threshold=1,
+                svid=key,
+                verbose=False,
+            )
+
+        # ---------------------------------------
+        # Write results directly into dataframe
+        # ---------------------------------------
+        df.loc[idx, f"tec_cph{pair}"] = carrier
+        df.loc[idx, f"tec_rng{pair}"] = pseudo
+
+    return df
 
 def compute_s4(snr):
     snr = snr.dropna()
