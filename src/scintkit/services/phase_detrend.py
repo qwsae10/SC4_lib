@@ -25,7 +25,7 @@ def detect_sampling_rate(df):
     print("=========================================\n")
 
 
-    n = counts.n_samples.max()
+    '''n = counts.n_samples.max()
 
     threshold = 10
     if abs(n-600) < threshold:
@@ -37,7 +37,34 @@ def detect_sampling_rate(df):
     elif abs(n-3000) < threshold:
         return 3000/60
     else:
-        return None
+        return None'''
+    
+# added by Priya
+    n = counts.n_samples.max()
+
+    print("\nMaximum samples =", n)
+
+    threshold = 10
+
+    if abs(n-600) < threshold:
+        print("Returning 10 Hz")
+        return 600/60
+
+    elif abs(n-1200) < threshold:
+        print("Returning 20 Hz")
+        return 1200/60
+
+    elif abs(n-2400) < threshold:
+        print("Returning 40 Hz")
+        return 2400/60
+
+    elif abs(n-3000) < threshold:
+        print("Returning 50 Hz")
+        return 3000/60
+
+    else:
+        print("Returning None")
+        return None #priya end
 
 def make_prn_local(dfin):
     constellation_map = {
