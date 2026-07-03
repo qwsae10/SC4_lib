@@ -1,5 +1,6 @@
 
 import os
+import traceback
 from scintkit.preprocessing.format import temp_formating,make_1min,make_1sec
 from scintkit.services.compute import add_products
 from scintkit.services.convert_to_parquet import process_one
@@ -125,6 +126,7 @@ def process(flist, verbose=False,mode='both'):
         except Exception as e:
             print(f"Error processing {fname}") 
             print(e)
+            traceback.print_exc()
             continue
     return converted_files
 
