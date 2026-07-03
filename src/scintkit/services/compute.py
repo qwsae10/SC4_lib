@@ -292,7 +292,7 @@ def add_products(df,verbose=False):
     if not agg_dict:
         return df
 
-    products = (
+    '''products = (
         df.groupby(group_cols, sort=False)
         .agg(**agg_dict)
         .reset_index()
@@ -300,6 +300,18 @@ def add_products(df,verbose=False):
     if verbose:
         print("Merging products back to original dataframe...")
     df = df.merge(products, on=group_cols, how="left")
+
+    return df'''
+    #Added by Priya
+
+    if verbose:
+       print("Computing minute products...")
+
+    groups = df.groupby(group_cols, sort=False)
+
+    for new_col, (src_col, func) in agg_dict.items():
+
+        df[new_col] = groups[src_col].transform(func)
 
     return df
 
