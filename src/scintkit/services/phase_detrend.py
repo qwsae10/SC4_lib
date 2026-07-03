@@ -14,6 +14,15 @@ def detect_sampling_rate(df):
         .size()
         .reset_index(name='n_samples')
     )
+# added by Priya
+    print("\n========== Sampling Rate Debug ==========")
+    print(counts["n_samples"].describe())
+    print("Maximum samples:", counts["n_samples"].max())
+    print("Minimum samples:", counts["n_samples"].min())
+    print("Median samples :", counts["n_samples"].median())
+    print("Unique sample counts (first 20):")
+    print(sorted(counts["n_samples"].unique())[:20])
+    print("=========================================\n")
 
 
     n = counts.n_samples.max()
