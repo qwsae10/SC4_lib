@@ -3,7 +3,7 @@ from scintkit.pipelines.auto import process
 outputs = process(
     "/home/dal674840/scratch/lvl0_welev_parquet/mx01316c00.25__mearem_welev_lvl0_lvl0.parquet",
     verbose=True,
-    mode="both"
+    mode="lvl3"
 )
 
 print(outputs)
