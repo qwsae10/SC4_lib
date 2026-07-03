@@ -1,7 +1,7 @@
 from scintkit.pipelines.auto import process
 
 outputs = process(
-    "/Users/dal674840/scintkit/src/scintkit/sc4_reading/sc4_lvl0_001_2026_welev_sc000_v000_lvl0.parquet",
+    "/home/dal674840/scratch/lvl0_welev_parquet/mx01316c00.25__mearem_welev_lvl0_lvl0.parquet",
     verbose=True,
     mode="both"
 )
