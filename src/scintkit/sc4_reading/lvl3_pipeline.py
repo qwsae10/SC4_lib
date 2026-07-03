@@ -1,5 +1,7 @@
 from pathlib import Path
 import shutil
+import gc
+import traceback
 
 from scintkit.pipelines.auto import process
 
@@ -12,7 +14,24 @@ def run_lvl3_pipeline(
     verbose=True,
 ):
     """
-    Run ScintKit processing on all Level-0 parquet files.
+    Process all Level-0 parquet files using ScintKit.
+
+    Parameters
+    ----------
+    lvl0_dir : str or Path
+        Folder containing *_lvl0.parquet files.
+
+    lvl2_dir : str or Path
+        Folder where Level-2 files will be saved.
+
+    lvl3_dir : str or Path
+        Folder where Level-3 files will be saved.
+
+    mode : str
+        "lvl2", "lvl3", or "both"
+
+    verbose : bool
+        Print progress messages.
     """
 
     lvl0_dir = Path(lvl0_dir)
@@ -24,46 +43,104 @@ def run_lvl3_pipeline(
 
     lvl0_files = sorted(lvl0_dir.glob("*_lvl0.parquet"))
 
-    print(f"\nFound {len(lvl0_files)} Level-0 files.\n")
+    print("=" * 80)
+    print(f"Found {len(lvl0_files)} Level-0 files.")
+    print("=" * 80)
 
-    outputs = process(
-        [str(f) for f in lvl0_files],
-        verbose=verbose,
-        mode=mode,
+    successful = 0
+    failed = []
+
+    for i, parquet_file in enumerate(lvl0_files, start=1):
+
+        print("\n" + "=" * 80)
+        print(f"[{i}/{len(lvl0_files)}] {parquet_file.name}")
+
+        try:
+
+            outputs = process(
+                str(parquet_file),
+                verbose=verbose,
+                mode=mode,
+            )
+
+            if outputs is None or len(outputs) == 0:
+                print("No output files created.")
+                failed.append(parquet_file.name)
+                continue
+
+            for outfile in outputs:
+
+                outfile = Path(outfile)
+
+                if not outfile.exists():
+                    continue
+
+                if "_lvl2" in outfile.name:
+
+                    destination = lvl2_dir / outfile.name
+
+                    shutil.move(
+                        str(outfile),
+                        str(destination)
+                    )
+
+                    print(f"Saved Level-2 : {destination}")
+
+                elif "_lvl3" in outfile.name:
+
+                    destination = lvl3_dir / outfile.name
+
+                    shutil.move(
+                        str(outfile),
+                        str(destination)
+                    )
+
+                    print(f"Saved Level-3 : {destination}")
+
+            successful += 1
+
+            print("✓ Success")
+
+        except Exception:
+
+            print("✗ Failed")
+
+            traceback.print_exc()
+
+            failed.append(parquet_file.name)
+
+        finally:
+
+            gc.collect()
+
+    print("\n" + "=" * 80)
+    print("Pipeline completed")
+    print("=" * 80)
+
+    print(f"Successful : {successful}")
+    print(f"Failed     : {len(failed)}")
+
+    if failed:
+
+        print("\nFailed files:")
+
+        for f in failed:
+
+            print(f)
+
+
+if __name__ == "__main__":
+
+    run_lvl3_pipeline(
+
+        lvl0_dir="/home/dal674840/scratch/lvl0_welev_parquet",
+
+        lvl2_dir="/home/dal674840/scratch/lvl2_parquet",
+
+        lvl3_dir="/home/dal674840/scratch/lvl3_parquet",
+
+        mode="both",
+
+        verbose=True,
+
     )
-
-    print("\nReturned outputs:")
-    print(outputs)
-
-    if outputs is None:
-        print("No output files were created.")
-        return
-
-    for outfile in outputs:
-
-        outfile = Path(outfile)
-
-        if not outfile.exists():
-            continue
-
-        if "_lvl2" in outfile.name:
-            shutil.move(
-                str(outfile),
-                str(lvl2_dir / outfile.name)
-            )
-
-        elif "_lvl3" in outfile.name:
-            shutil.move(
-                str(outfile),
-                str(lvl3_dir / outfile.name)
-            )
-
-    print("\nFinished.")
-
-run_lvl3_pipeline(
-    lvl0_dir="/home/dal674840/scratch/lvl0_welev_parquet",
-    lvl2_dir="/home/dal674840/scratch/lvl2_parquet",
-    lvl3_dir="/home/dal674840/scratch/lvl3_parquet",
-    mode="both",
-    verbose=True,
-)   
