@@ -10,7 +10,7 @@ def run_lvl3_pipeline(
     lvl0_dir,
     lvl2_dir,
     lvl3_dir,
-    mode="both",
+    mode="lvl3",
     verbose=True,
 ):
     """
@@ -139,7 +139,7 @@ if __name__ == "__main__":
 
         lvl3_dir="/home/dal674840/scratch/lvl3_parquet",
 
-        mode="both",
+        mode="lvl3",
 
         verbose=True,
 
