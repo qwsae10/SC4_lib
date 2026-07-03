@@ -58,9 +58,13 @@ def detect_sampling_rate(df):
         print("Returning 40 Hz")
         return 2400/60
 
-    elif abs(n-3000) < threshold:
+    elif 2930 <= n <= 2950:
+        print("Returning 49 Hz")
+        return 49
+
+    elif 2990 <= n <= 3010:
         print("Returning 50 Hz")
-        return 3000/60
+        return 50
 
     else:
         print("Returning None")
