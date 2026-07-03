@@ -29,7 +29,8 @@ def pseudorange_tec(P1_m, P2_m, f1_hz, f2_hz):
     return tec_factor * (P2_m - P1_m)/1e16
 
 def add_tec_columns(df, pair="13", fs=None):
-    df = df.reset_index(drop=True).copy()
+    #df = df.reset_index(drop=True).copy()
+    pass
 
 
 
