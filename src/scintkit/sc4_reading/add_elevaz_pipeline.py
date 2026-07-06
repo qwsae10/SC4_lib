@@ -8,8 +8,8 @@ def run_sp3_pipeline(
     parquet_dir,
     sp3_dir,
     output_dir,
-    rx_lat = 32.99183368953561 #COORDINATES ARE IN THE MIDLE OF THE Receivers
-    rx_long = -96.75730930926228
+    rx_lat = 32.99183368953561,#COORDINATES ARE IN THE MIDLE OF THE Receivers
+    rx_long = -96.75730930926228,
     rx_hei = 146.914,
 ):
     """
