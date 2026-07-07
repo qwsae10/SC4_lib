@@ -342,5 +342,6 @@ def add_products(df,verbose=False):
         mem(new_col)
 
     return df
+    mem("After add_products") 
 
 # %%
