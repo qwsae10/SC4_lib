@@ -3,7 +3,7 @@
 #SBATCH --output=concat_4hr_%j.out
 #SBATCH --error=concat_4hr_%j.err
 
-#SBATCH --partition=normal      # Change if your cluster uses a different partition
+#SBATCH --partition=cpu-preempt      # Change if your cluster uses a different partition
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
