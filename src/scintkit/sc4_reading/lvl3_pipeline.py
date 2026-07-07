@@ -133,7 +133,7 @@ if __name__ == "__main__":
 
     run_lvl3_pipeline(
 
-        lvl0_dir="/home/dal674840/scratch/lvl0_welev_parquet",
+        lvl0_dir="/home/dal674840/scratch/4hr_parquet_lvl0",
 
         lvl2_dir="/home/dal674840/scratch/lvl2_parquet",
 
