@@ -66,7 +66,7 @@ def sp3_merge_lvl3(
     df = df.drop(columns='timestampstr')
     df['timestamp'] = pd.to_datetime(df['timestamp'])
     df = df.set_index(['timestamp'])
-    df_resampled = df.groupby(['satellite']).apply(lambda group: group.resample('30s').interpolate(method='quadratic',axis=0),include_groups=False )
+    df_resampled = df.groupby(['satellite']).apply(lambda group: group.resample('1min').interpolate(method='quadratic',axis=0),include_groups=False )
     # 4. Optional: remove multiindex if you prefer flat structure
     df_resampled = df_resampled.reset_index()
     #Convert to meters
@@ -128,18 +128,44 @@ def sp3_merge_lvl3(
 # Sort (required for merge_asof)
     df_final = df_final.sort_values(["timestamp", "satellite"]).reset_index(drop=True)
     df_resampled = df_resampled.sort_values(["timestamp", "satellite"]).reset_index(drop=True)
+
+    #Added by Priya
+
+    df_final["minbin"] = df_final["timestamp"].dt.floor("1min")
+
+    df_resampled["minbin"] = df_resampled["timestamp"].dt.floor("1min")
+
+    print(
+    df_resampled.groupby(["satellite", "minbin"]).size().max())
  
 # --------------------------------------------------
 # Merge using nearest timestamp for the same satellite
 # --------------------------------------------------
-    unified_df = pd.merge_asof(
+    '''unified_df = pd.merge_asof(
       df_final,
       df_resampled,
       on="timestamp",
       by="satellite",
       direction="nearest",
-      tolerance=pd.Timedelta("30s")   # or "1min" if you prefer
-    )
+      tolerance=pd.Timedelta("1min")   # or "1min" if you prefer
+    )'''
+
+
+    unified_df = df_final.merge(
+    df_resampled[
+        [
+            "minbin",
+            "satellite",
+            "elev",
+            "azim",
+            "ilat350",
+            "ilon350",
+            "elevdeg",
+            "azimdeg",
+        ]
+    ],
+    on=["minbin", "satellite"],
+    how="left",)
 
 
 
