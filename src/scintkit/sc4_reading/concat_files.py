@@ -3,7 +3,7 @@ import pandas as pd
 import re
 
 input_dir = Path("/home/dal674840/scratch/lvl0_welev_parquet")
-output_dir = Path("/home/dal674840/scratch/4hr_parquet")
+output_dir = Path("/home/dal674840/scratch/4hr_parquet_lvl0")
 output_dir.mkdir(exist_ok=True)
 
 blocks = [
@@ -71,7 +71,7 @@ for doy in sorted(day_dict.keys()):
         start_hour = block_id * 4
         end_hour = start_hour + 4
 
-        outfile = output_dir / f"DOY{doy}_{start_hour:02d}-{end_hour:02d}UTC.parquet"
+        outfile = output_dir / f"DOY{doy}_{start_hour:02d}-{end_hour:02d}UTC_lvl0.parquet"
 
         merged.to_parquet(outfile, index=False)
 
