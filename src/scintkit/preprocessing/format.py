@@ -22,7 +22,13 @@ def make_prn(dfin):
         "SBAS": "S",
         "SBS": "S",
     }
-    return dfin["cons"].map(constellation_map) + dfin["svid"].astype(int).astype(str).str.zfill(2) 
+    #return dfin["cons"].map(constellation_map) + dfin["svid"].astype(int).astype(str).str.zfill(2) 
+    cons = dfin["cons"].map(constellation_map)
+    svid = dfin["svid"].to_numpy(dtype=np.int16)
+
+    dfin["prn"] = [f"{c}{s:02d}" for c, s in zip(cons, svid)]
+
+    return dfin["prn"]
 
 
 def zero_cph_snr_to_nan(df):
@@ -34,7 +40,7 @@ def zero_cph_snr_to_nan(df):
         df[cols] = df[cols].replace(0, np.nan)
     return df    
                                                                                  
-def temp_formating(df):
+'''def temp_formating(df):
 
     mem("After temp_formating")
 
@@ -46,23 +52,70 @@ def temp_formating(df):
         df['cons'] = s.map(gnssdic_loop)
     #df = df[~((df['cons'] == 'GLO') & (df['svid'] == 255))].copy()
     #added by Priya
-    mask = (df["cons"] == "GLO") & (df["svid"] == 255)
 
-    print("Rows to remove:", mask.sum())
-    print("Total rows:", len(df))
-
-    print(mask.sum())
 
     #df = df.loc[mask]
-    print(df.dtypes.value_counts())
-    print(df.info(memory_usage="deep"))
+
 
     #df=df.reset_index()
     df['minbin'] = df['datetime'].dt.floor('1min')
     df['prn']=make_prn(df)
     df=add_sigs(df)
     df=zero_cph_snr_to_nan(df)
-    return df
+    return df'''
+
+def temp_formating(df):
+
+    gnssdic_loop = {
+        0: "GPS",
+        1: "SBS",
+        2: "GAL",
+        3: "BDS",
+        6: "GLO",
+    }
+
+    # -------------------------------------------------------
+    # Convert numeric constellation IDs to strings if needed
+    # -------------------------------------------------------
+
+    s = pd.to_numeric(df["cons"], errors="coerce")
+
+    if s.notna().all():
+        df["cons"] = s.map(gnssdic_loop)
+
+    # -------------------------------------------------------
+    # Reduce memory usage
+    # -------------------------------------------------------
+
+    df["cons"] = df["cons"].astype("category")
+
+    # -------------------------------------------------------
+    # Create minute bins
+    # -------------------------------------------------------
+
+    df["minbin"] = df["datetime"].dt.floor("1min")
+
+    # -------------------------------------------------------
+    # Create PRN
+    # -------------------------------------------------------
+
+    df["prn"] = make_prn(df)
+
+    df["prn"] = df["prn"].astype("category")
+
+    # -------------------------------------------------------
+    # Add signal names and frequencies
+    # -------------------------------------------------------
+
+    df = add_sigs(df)
+
+    # -------------------------------------------------------
+    # Replace zero carrier phases/SNR with NaN
+    # -------------------------------------------------------
+
+    df = zero_cph_snr_to_nan(df)
+
+    return df    
 
 
 
