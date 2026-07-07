@@ -1,7 +1,14 @@
 
 import pandas as pd
 import numpy as np
+import psutil
+import os
 
+def mem(stage):
+    p = psutil.Process(os.getpid())
+    rss = p.memory_info().rss / 1024**3
+    print(f"\n===== {stage} =====")
+    print(f"RSS Memory : {rss:.2f} GB")
 
 def make_prn(dfin):
 
@@ -29,6 +36,8 @@ def zero_cph_snr_to_nan(df):
                                                                                  
 def temp_formating(df):
 
+    mem("After temp_formating")
+
     gnssdic_loop = {0: 'GPS', 1: 'SBS', 2: 'GAL', 3: 'BDS', 6: 'GLO'}
     #check if cons is numeric
     s = pd.to_numeric(df['cons'], errors='coerce')
@@ -42,7 +51,7 @@ def temp_formating(df):
     df.drop(df.index[mask], inplace=True)
     df.reset_index(drop=True, inplace=True) #end
 
-    df=df.reset_index()
+    #df=df.reset_index()
     df['minbin'] = df['datetime'].dt.floor('1min')
     df['prn']=make_prn(df)
     df=add_sigs(df)
@@ -50,7 +59,11 @@ def temp_formating(df):
     return df
 
 
+
+
 def add_sigs(df):
+
+    mem("After add_sigs")
 
     mapping = {
     # sig1

@@ -1,6 +1,10 @@
 #%%
+import os
+
 import pandas as pd
 import numpy as np
+import psutil
+import os
 
 from scintkit.services.phase_detrend import process_phases,repair_discontinuities_pos,detect_sampling_rate
 from scintkit.preprocessing.format import temp_formating
@@ -8,6 +12,13 @@ from scintkit.preprocessing.format import temp_formating
 
 import numpy as np
 import pdb
+
+#Added by Priya 
+
+def mem(stage):
+    p = psutil.Process(os.getpid())
+    print(f"\n[{stage}]")
+    print(f"Memory (RSS): {p.memory_info().rss / 1024**3:.2f} GB") #end
 
 def carrier_phase_tec(phi1_cyc, phi2_cyc, f1_hz, f2_hz):
     c = 299792458  # m/s
@@ -101,6 +112,8 @@ def pseudorange_tec(P1_m, P2_m, f1_hz, f2_hz):
 
 def add_tec_columns(df, pair="13", fs=None):
 
+    mem("Start add_tec_columns")
+
     # Create output columns if they don't already exist
     df[f"tec_cph{pair}"] = np.nan
     df[f"tec_rng{pair}"] = np.nan
@@ -184,6 +197,7 @@ def add_tec_columns(df, pair="13", fs=None):
 
     return df
 
+
 def compute_s4(snr):
     snr = snr.dropna()
     if len(snr) == 0:
@@ -240,6 +254,8 @@ def add_products(df,verbose=False):
     - s4_corrected_1, s4_corrected_2, s4_corrected_3: S4 index corrected for bias based on Van Dierendonck (1993) method
     The function groups the data by PRN and 1-minute bins to compute these products, and then merges the results back to the original dataframe in the same time bins.
     """
+
+    mem("Start add_products")
 
     if verbose:
         print("Ensuring format...")
@@ -311,7 +327,11 @@ def add_products(df,verbose=False):
 
     for new_col, (src_col, func) in agg_dict.items():
 
+        print(f"Computing {new_col}")
+
         df[new_col] = groups[src_col].transform(func)
+
+        mem(new_col)
 
     return df
 

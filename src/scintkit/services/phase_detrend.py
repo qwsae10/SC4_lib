@@ -1,12 +1,22 @@
 #%%%
 import numpy as np
 import pandas as pd
-from scipy import signal    
+from scipy import signal   
+
+import psutil
+import os
+
+def mem(stage):
+    p = psutil.Process(os.getpid())
+    rss = p.memory_info().rss / 1024**3
+    print(f"\n===== {stage} =====")
+    print(f"RSS Memory : {rss:.2f} GB")
 
 def detect_sampling_rate(df):
     """
     detect the sampling rate of the data by looking at the number of samples per minute per PRN.
     """
+    mem("After detect_sampling_rate")
     # samples per (minute, prn)
     counts = (
         df
@@ -60,6 +70,8 @@ def detect_sampling_rate(df):
     else:
         print("Returning None")
         return None #priya end
+
+   
 
 def make_prn_local(dfin):
     constellation_map = {
@@ -146,6 +158,7 @@ def highpass_phase(
     fs=None,
     f_N=0.1
 ):
+    mem("before highpass_phase")
 
     slip_col = out_col.replace("detrended", "cycleslips")
     df[out_col] = np.nan
@@ -215,6 +228,7 @@ def highpass_phase(
             raise
 
     return df
+    mem("After highpass_phase")
 
 
 
@@ -260,6 +274,7 @@ def highpass_all_phases(df,fs=None,tr=1):
     return df
 
 
+
 def estimate_clock(df, elev_mask=0):
 
     value_cols = []
@@ -278,7 +293,9 @@ def estimate_clock(df, elev_mask=0):
         return df
 
     # only use high-elevation data to estimate clock
+    mem("before clock_df")
     clock_df = df[(df["elev"] > elev_mask) & (df["elev"] < 90)]
+    mem("estimate_clock : after clock_df")
 
     median_curve = (
         clock_df.melt(
@@ -288,9 +305,11 @@ def estimate_clock(df, elev_mask=0):
         .groupby("datetime")["value"]
         .median()
     )
+    mem("estimate_clock : after median_curve")
 
     # apply clock estimate back to full df
     df["clock_term"] = df["datetime"].map(median_curve)
+    mem("estimate_clock : after clock_term")
 
     return df
 
@@ -307,6 +326,7 @@ def clock_correction(df,out_col="detrended_noclk_cph"):
 
 
 def process_phases(df,fs=None,tr=1):
+    mem("After process_phases")
     fs=detect_sampling_rate(df) if fs is None else fs
 
     df = highpass_all_phases(df,fs,tr)
@@ -314,5 +334,6 @@ def process_phases(df,fs=None,tr=1):
     df = clock_correction(df)
 
     return df
+
 
 # %%
