@@ -259,12 +259,20 @@ def add_products(df,verbose=False):
 
     if verbose:
         print("Ensuring format...")
+    print("A")    
     df=temp_formating(df)
+    print("B")
+    mem("After temp_formating")
     if verbose:
-        print("Processing phases...")   
+        print("Processing phases...")
+    print("C")      
+    mem("Before process_phases") 
     df = process_phases(df)
+    print("D")
+    mem("After process_phases")
 
     fs=detect_sampling_rate(df)
+    mem("After detect_sampling_rate")
     
     if verbose:
         print("Computing TEC...")
