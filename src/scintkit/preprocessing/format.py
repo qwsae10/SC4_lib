@@ -35,7 +35,12 @@ def temp_formating(df):
 
     if s.notna().all():
         df['cons'] = s.map(gnssdic_loop)
-    df = df[~((df['cons'] == 'GLO') & (df['svid'] == 255))].copy()
+    #df = df[~((df['cons'] == 'GLO') & (df['svid'] == 255))].copy()
+    #added by Priya
+    mask = (df["cons"] == "GLO") & (df["svid"] == 255)
+
+    df.drop(df.index[mask], inplace=True)
+    df.reset_index(drop=True, inplace=True) #end
 
     df=df.reset_index()
     df['minbin'] = df['datetime'].dt.floor('1min')

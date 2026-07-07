@@ -4,7 +4,7 @@
 #SBATCH --nodes=10
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=1
-#SBATCH --mem=64G
+#SBATCH --mem=128G
 #SBATCH --time=24:00:00
 
 #SBATCH --output=lvl3_pipeline_%j.out
