@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=lvl3_pipeline
 #SBATCH --partition=cpu-preempt
-#SBATCH --nodes=1
+#SBATCH --nodes=10
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=64G
@@ -16,8 +16,8 @@ echo "Start time : $(date)"
 echo "========================================"
 
 # Activate conda
-source ~/miniconda3/etc/profile.d/conda.sh
-conda activate scintkit_env
+#source ~/miniconda3/etc/profile.d/conda.sh
+#conda activate scintkit_env
 
 # Change to your project directory
 cd /home/dal674840/scintkit/src/scintkit/sc4_reading
