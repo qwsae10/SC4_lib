@@ -89,6 +89,9 @@ def temp_formating(df):
 
     df["cons"] = df["cons"].astype("category")
 
+    bad = df["cons"].eq("GLO") & df["svid"].eq(255)
+    df.drop(index=df.index[bad], inplace=True)
+
     # -------------------------------------------------------
     # Create minute bins
     # -------------------------------------------------------
