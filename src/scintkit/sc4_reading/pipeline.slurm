@@ -3,6 +3,7 @@
 #SBATCH --partition=cpu-preempt
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
+#SBATCH --cpus-per-task=1
 #SBATCH --mem=64G
 #SBATCH --time=08:00:00
 #SBATCH --output=sc4_pipeline_%j.out
