@@ -10,8 +10,8 @@
 #SBATCH --error=sc4_pipeline_%j.err
 
 # Activate your conda environment
-source ~/miniconda3/etc/profile.d/conda.sh
-conda activate scintkit_env
+#source ~/miniconda3/etc/profile.d/conda.sh
+#conda activate scintkit_env
 
 # Go to your project
 cd /home/dal674840/scintkit/src/scintkit/sc4_reading
