@@ -147,8 +147,8 @@ def run_pipeline(
             print(file)
 
 run_pipeline(
-    binary_dir="/home/dal674840/scratch",
-    txt_dir="/home/dal674840/scratch/txt_files",
-    mearem_dir="/home/dal674840/scratch/mearem_parquet",
-    lvl0_dir="/home/dal674840/scratch/lvl0_parquet",
+    binary_dir="/home/dal674840/scratch/mx02_data",
+    txt_dir="/home/dal674840/scratch/mx02_txt_files",
+    mearem_dir="/home/dal674840/scratch/mx02_mearem_parquet",
+    lvl0_dir="/home/dal674840/scratch/mx02_lvl0_parquet",
 )            

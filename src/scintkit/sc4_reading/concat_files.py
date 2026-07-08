@@ -2,8 +2,8 @@ from pathlib import Path
 import pandas as pd
 import re
 
-input_dir = Path("/home/dal674840/scratch/lvl0_welev_parquet")
-output_dir = Path("/home/dal674840/scratch/4hr_parquet_lvl0")
+input_dir = Path("/home/dal674840/scratch/mx02_lvl0_welev_parquet")
+output_dir = Path("/home/dal674840/scratch/mx02_4hr_parquet_lvl0")
 output_dir.mkdir(exist_ok=True)
 
 blocks = [

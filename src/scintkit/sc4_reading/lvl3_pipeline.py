@@ -133,11 +133,11 @@ if __name__ == "__main__":
 
     run_lvl3_pipeline(
 
-        lvl0_dir="/home/dal674840/scratch/4hr_parquet_lvl0",
+        lvl0_dir="/home/dal674840/scratch/mx02_4hr_parquet_lvl0",
 
-        lvl2_dir="/home/dal674840/scratch/lvl2_parquet",
+        lvl2_dir="/home/dal674840/scratch/mx02_lvl2_parquet",
 
-        lvl3_dir="/home/dal674840/scratch/lvl3_parquet",
+        lvl3_dir="/home/dal674840/scratch/mx02_lvl3_parquet",
 
         mode="lvl3",
 

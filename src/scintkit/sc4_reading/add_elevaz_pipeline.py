@@ -104,7 +104,7 @@ def run_sp3_pipeline(
             print(file)
 
 run_sp3_pipeline(
-    parquet_dir="/home/dal674840/scratch/lvl0_parquet",
+    parquet_dir="/home/dal674840/scratch/mx02_lvl0_parquet",
     sp3_dir="/home/dal674840/scratch",
-    output_dir="/home/dal674840/scratch/lvl0_welev_parquet",
+    output_dir="/home/dal674840/scratch/mx02_lvl0_welev_parquet",
 )
