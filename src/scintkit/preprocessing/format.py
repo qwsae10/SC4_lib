@@ -40,7 +40,7 @@ def zero_cph_snr_to_nan(df):
         df[cols] = df[cols].replace(0, np.nan)
     return df    
                                                                                  
-'''def temp_formating(df):
+def temp_formating(df):
 
     mem("After temp_formating")
 
@@ -53,6 +53,9 @@ def zero_cph_snr_to_nan(df):
     #df = df[~((df['cons'] == 'GLO') & (df['svid'] == 255))].copy()
     #added by Priya
 
+    bad = df["cons"].eq("GLO") & df["svid"].eq(255)
+    df.drop(index=df.index[bad], inplace=True)
+
 
     #df = df.loc[mask]
 
@@ -62,9 +65,9 @@ def zero_cph_snr_to_nan(df):
     df['prn']=make_prn(df)
     df=add_sigs(df)
     df=zero_cph_snr_to_nan(df)
-    return df'''
+    return df
 
-def temp_formating(df):
+'''def temp_formating(df):
 
     gnssdic_loop = {
         0: "GPS",
@@ -77,8 +80,7 @@ def temp_formating(df):
     # -------------------------------------------------------
     # Convert numeric constellation IDs to strings if needed
     # -------------------------------------------------------
-    bad = df["cons"].eq("GLO") & df["svid"].eq(255)
-    df.drop(index=df.index[bad], inplace=True)
+    
     s = pd.to_numeric(df["cons"], errors="coerce")
 
     if s.notna().all():
@@ -118,7 +120,7 @@ def temp_formating(df):
 
     df = zero_cph_snr_to_nan(df)
 
-    return df    
+    return df'''  
 
 
 
