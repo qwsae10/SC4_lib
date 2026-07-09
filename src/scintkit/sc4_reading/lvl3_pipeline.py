@@ -137,7 +137,7 @@ if __name__ == "__main__":
 
         lvl2_dir="/home/dal674840/scratch/mx02_lvl2_parquet",
 
-        lvl3_dir="/home/dal674840/scratch/mx02_lvl3_parquet",
+        lvl3_dir="/home/dal674840/scratch/mx02_4hr_parquet_lvl3",
 
         mode="lvl3",
 
