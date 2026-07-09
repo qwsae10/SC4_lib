@@ -25,7 +25,7 @@ for f in files:
     # Example:
     # mx01316a15.25__mearem_welev_lvl0_lvl0.parquet
 
-    m = re.match(r"mx01(\d{3})([a-x])(\d{2})", f.name)
+    m = re.match(r"mx02(\d{3})([a-x])(\d{2})", f.name)
 
     if m is None:
         continue
