@@ -1,10 +1,16 @@
 {
-	"folders": [
+    "folders": [
 		{
 			"path": "../../.."
 		},
 		{
+			"path": "../../../../../../Volumes/scintpi3_data/Priya_Nov12_13_2025"
+		},
+		{
 			"path": "../../../../Priya_Nov12_13_2025"
+		},
+		{
+			"path": "../../../../Downloads"
 		}
 	]
 }
