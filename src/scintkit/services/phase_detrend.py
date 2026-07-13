@@ -229,7 +229,7 @@ def highpass_all_phases(df,fs=None,tr=1):
     return df
 
 
-def estimate_clock(df, elev_mask=0):
+def estimate_clock(df, elev_mask=10):
 
     value_cols = []
 
