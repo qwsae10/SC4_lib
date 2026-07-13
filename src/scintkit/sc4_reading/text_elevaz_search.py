@@ -1,13 +1,25 @@
 import pandas as pd
-from pathlib import Path
-import numpy as np
-import os
-from pathlib import Path
 
-file = Path("/home/dal674840/scratch/txt_files/mx01316a00.25__measurements.txt")
+file = "mx01316a00.25__SBF_Meas3Ranges.txt"
 
-with open(file, "r", errors="ignore") as f:
-    lines = f.readlines()
+cols = [
+    "tow",
+    "week",
+    "prn",
+    "signal",
+    "antenna",
+    "pseudorange",
+    "carrier_phase",
+    "unused",
+    "cn0",
+    "lock_time"
+]
 
-print(lines[:10])      # First 10 lines
-print(f"Total lines: {len(lines)}")
+df = pd.read_csv(
+    file,
+    names=cols,
+    header=None
+)
+
+print(df.head())
+print(df.info())
