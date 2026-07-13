@@ -17,4 +17,4 @@
 cd /home/dal674840/scintkit/src/scintkit/sc4_reading
 
 # Run the pipeline
-python pipeline_trial.py
+python bin_to_parquet.py

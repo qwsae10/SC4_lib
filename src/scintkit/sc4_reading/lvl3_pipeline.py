@@ -129,7 +129,7 @@ def run_lvl3_pipeline(
             print(f)
 
 
-if __name__ == "__main__":
+'''if __name__ == "__main__":
 
     run_lvl3_pipeline(
 
@@ -143,4 +143,4 @@ if __name__ == "__main__":
 
         verbose=True,
 
-    )
+    )'''

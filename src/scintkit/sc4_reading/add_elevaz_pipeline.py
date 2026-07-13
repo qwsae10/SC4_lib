@@ -8,9 +8,9 @@ def run_sp3_pipeline(
     parquet_dir,
     sp3_dir,
     output_dir,
-    rx_lat = 32.99183368953561,#COORDINATES ARE IN THE MIDLE OF THE Receivers
-    rx_long = -96.75730930926228,
-    rx_hei = 146.914,
+    rx_lat,#COORDINATES ARE IN THE MIDLE OF THE Receivers
+    rx_long,
+    rx_hei,
 ):
     """
     Apply SP3 merge to every Level-3 parquet file.
@@ -103,8 +103,8 @@ def run_sp3_pipeline(
         for file in failed:
             print(file)
 
-run_sp3_pipeline(
+'''run_sp3_pipeline(
     parquet_dir="/home/dal674840/scratch/mx02_lvl0_parquet",
     sp3_dir="/home/dal674840/scratch",
     output_dir="/home/dal674840/scratch/mx02_lvl0_welev_parquet",
-)
+)'''
