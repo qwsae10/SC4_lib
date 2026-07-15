@@ -76,6 +76,28 @@ This will:
 3. compute derived products
 4. output lvl3 files
 
+### Identifying a station
+
+The maintained station registry can identify a receiver from coordinates:
+
+```python
+from scintkit.data import identify_station
+
+station = identify_station(latitude=32.9919, longitude=-96.7573)
+print(station["Code"])  # US-TX1
+```
+
+It can also read legacy coordinate filenames or SC4 station prefixes:
+
+```python
+station = identify_station(
+    filename="scintpi3_20241011_1200_96.7573W_32.9919N_v326f_lvl0.pq"
+)
+```
+
+The function returns the matching CSV row as a dictionary. It returns `None`
+when no station is within 3 km. Pass `max_distance_km=` to change that limit.
+
 ---
 
 ## Tutorial
