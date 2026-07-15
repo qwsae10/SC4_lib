@@ -17,19 +17,14 @@ def main():
     cutoff = now - pd.DateOffset(months=3)
     out_png = f"stations_availability_lvl3_{now:%Y_%m_%d}.png"
 
-    sc4_stations_dict = {
-        "mx01": "ME-MO1", "mx02": "ME-MO2",
-        "cg01": "BR-CG1", "cg02": "BR-CG2",
-        "cr01": "CR-CA1", "ho01": "TE-HO1",
-    }
     email_recipients = ["tarunlsankar@gmail.com", "TLS220003@utdallas.edu", "IGW180000@utdallas.edu"]
 
     # 2. Pipeline Execution
     print("Starting ScintPi Pipeline...")
     try:
-        targets = load_targets()  # uses bundled CSV by default
+        targets = load_targets()  # uses the shared station registry by default
         scan_legacy_files(targets, cutoff)
-        scan_sc4_files(targets, cutoff, sc4_stations_dict)
+        scan_sc4_files(targets, cutoff)
 
         generate_availability_plot(targets, cutoff, now, out_png)
         send_status_email(image_path=out_png, now_date=now, to_list=email_recipients)

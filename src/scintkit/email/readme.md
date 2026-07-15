@@ -7,13 +7,15 @@
 ```text
 src/scintkit/
 ├── __init__.py
+├── data/
+│   ├── __init__.py
+│   └── station_scintpi_codes.csv
 ├── email/
 │   ├── __init__.py
 │   ├── core.py
 │   ├── plotting.py
 │   ├── mailer.py
-│   ├── run_pipeline.py
-│   └── station_scintpi_codes_fsr.csv
+│   └── run_pipeline.py
 ├── pipelines/
 ├── preprocessing/
 ├── reading/
@@ -70,7 +72,10 @@ python -m scintkit.email.run_pipeline
 
 ### Importing in your own code
 
-The station CSV (`station_scintpi_codes_fsr.csv`) is bundled with the package and loaded automatically — no need to manage file paths:
+The maintained station registry lives at
+`src/scintkit/data/station_scintpi_codes.csv`. It is bundled with the package
+and loaded automatically, so installed code does not depend on a repository
+path:
 
 ```python
 from scintkit.email import load_targets, scan_legacy_files, generate_availability_plot
@@ -82,13 +87,21 @@ targets = load_targets()
 targets = load_targets("/path/to/custom_stations.csv")
 ```
 
+Code outside the email module can load the shared station table directly:
+
+```python
+from scintkit.data import load_station_codes
+
+stations = load_station_codes()
+```
+
 ### Available functions
 
 | Function | Description |
 |---|---|
 | `load_targets(csv_path=None)` | Load station targets from CSV (defaults to bundled CSV) |
 | `scan_legacy_files(targets, cutoff)` | Scan ScintPi 2/3 data files |
-| `scan_sc4_files(targets, cutoff, sc4_dict)` | Scan ScintPi 4.0 data files |
+| `scan_sc4_files(targets, cutoff)` | Scan ScintPi 4.0 data files using CSV prefixes |
 | `generate_availability_plot(targets, cutoff, now, output_path)` | Generate availability PNG plot |
 | `send_status_email(image_path, now_date, to_list)` | Email the plot to recipients |
 | `checklvl3datamissing(lvl3file, thres=900)` | Check percent missing from Level-3 HDF5 file |
@@ -110,7 +123,7 @@ cutoff = now - pd.DateOffset(months=3)
 
 targets = load_targets()
 scan_legacy_files(targets, cutoff)
-scan_sc4_files(targets, cutoff, {"mx01": "ME-MO1", "cg01": "BR-CG1"})
+scan_sc4_files(targets, cutoff)
 
 generate_availability_plot(targets, cutoff, now, "availability.png")
 send_status_email("availability.png", now, ["recipient@example.com"])

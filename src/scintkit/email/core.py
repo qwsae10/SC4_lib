@@ -4,25 +4,34 @@ import glob
 import os
 import re
 import h5py as h5
-from importlib import resources
-def _bundled_csv() -> str:
-    """Return the path to the station CSV bundled with this package."""
-    ref = resources.files(__package__).joinpath("station_scintpi_codes_fsr.csv")
-    # as_posix works for both traversable and Path objects
-    return str(ref)
+from scintkit.data import load_station_codes
 
 
 def load_targets(csv_path=None):
     """Loads and sorts station targets strictly from CSV."""
-    if csv_path is None:
-        csv_path = _bundled_csv()
     plot_targets = []
     try:
-        scintpi_codes = pd.read_csv(csv_path, usecols=[0, 1, 2, 3, 4], encoding='latin1', header=None, skiprows=1)
-        scintpi_codes.columns = ['Station Location', 'Latitude', 'Longitude', 'Code', 'Type']
+        if csv_path is None:
+            scintpi_codes = load_station_codes()
+        else:
+            scintpi_codes = pd.read_csv(csv_path, encoding='latin1')
+        required_columns = [
+            'Station Location', 'Latitude', 'Longitude', 'Code', 'Type'
+        ]
+        missing_columns = [
+            column for column in required_columns
+            if column not in scintpi_codes.columns
+        ]
+        if missing_columns:
+            raise ValueError(
+                f"missing required columns: {', '.join(missing_columns)}"
+            )
+        if 'SC4 Prefix' not in scintpi_codes.columns:
+            scintpi_codes['SC4 Prefix'] = pd.NA
         
         scintpi_codes['Station Location'] = scintpi_codes['Station Location'].astype(str).str.strip()
         scintpi_codes['Code'] = scintpi_codes['Code'].astype(str).str.strip()
+        scintpi_codes['SC4 Prefix'] = scintpi_codes['SC4 Prefix'].astype('string').str.strip().str.lower()
         scintpi_codes['Latitude'] = pd.to_numeric(scintpi_codes['Latitude'], errors='coerce')
         scintpi_codes['Longitude'] = pd.to_numeric(scintpi_codes['Longitude'], errors='coerce')
         
@@ -43,6 +52,11 @@ def load_targets(csv_path=None):
                 'lon': lon,
                 'code': code_val,
                 'version': v_type,
+                'sc4_prefix': (
+                    row['SC4 Prefix']
+                    if pd.notna(row['SC4 Prefix']) and row['SC4 Prefix']
+                    else None
+                ),
                 'valid_times': set()
             })
 
@@ -94,10 +108,33 @@ def scan_legacy_files(plot_targets, cutoff, base_dir='/mfs/io/groups/uars/scintp
                     best_target['valid_times'].add(time_val.normalize())
 
 
-def scan_sc4_files(plot_targets, cutoff, sc4_dict, base_dir='/mfs/io/groups/uars/scintpi'):
-    """Scans ScintPi 4.0 files mapped via explicit dictionary."""
+def scan_sc4_files(plot_targets, cutoff, sc4_dict=None, base_dir='/mfs/io/groups/uars/scintpi'):
+    """Scan ScintPi 4 files using prefixes loaded from the station CSV.
+
+    ``sc4_dict`` remains available for callers that need to override the CSV
+    mapping, but the normal pipeline does not need to pass it.
+    """
     print("Scanning ScintPi 4 files...")
     sc4paths = []
+
+    if sc4_dict is None:
+        prefix_pairs = [
+            (target.get('sc4_prefix'), target['code'])
+            for target in plot_targets
+            if target.get('sc4_prefix')
+        ]
+        sc4_dict = {}
+        for prefix, code in prefix_pairs:
+            if prefix in sc4_dict and sc4_dict[prefix] != code:
+                raise ValueError(
+                    f"SC4 prefix {prefix!r} maps to multiple station codes"
+                )
+            sc4_dict[prefix] = code
+    else:
+        sc4_dict = {
+            str(prefix).strip().lower(): code
+            for prefix, code in sc4_dict.items()
+        }
 
     for prefix in sc4_dict.keys():
         search_pattern = os.path.join(base_dir, "*", "*", f"{prefix}*_")
