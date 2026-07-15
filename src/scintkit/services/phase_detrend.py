@@ -47,6 +47,10 @@ def make_prn_local(dfin):
 def repair_discontinuities_pos(vec, fs, threshold=1,svid=None,verbose=False):
     y = pd.Series(vec).copy()
 
+    finite = y.notna().to_numpy()
+    if not finite.any():
+        return y, pd.Series(False, index=y.index), 0
+
     window = int(10 * fs)
 
     delt = y.diff()
@@ -59,7 +63,10 @@ def repair_discontinuities_pos(vec, fs, threshold=1,svid=None,verbose=False):
         .ffill()
     )
 
-    good = ((delt - trend).abs() <= threshold).fillna(True)
+    residual = (delt - trend).abs()
+    # Comparisons against NaN evaluate to False, so fillna(True) after the
+    # comparison did not actually protect gaps or short series.
+    good = residual.le(threshold) | residual.isna()
     slip_mask = ~good
     n_slips = int(slip_mask.sum())
  
@@ -70,15 +77,25 @@ def repair_discontinuities_pos(vec, fs, threshold=1,svid=None,verbose=False):
         return pd.Series(vec), slip_mask, n_slips
     delt_clean = delt.where(good, np.nan)
 
-    if len(delt_clean) > 1:
-        delt_clean.iloc[0] = delt_clean.iloc[1]
+    # Anchor each contiguous finite block independently. Previously this used
+    # y.iloc[0], so one missing value at the start of a PRN pass made the whole
+    # repaired series NaN. A single anchor also lost isolated valid samples
+    # after gaps because their phase difference is necessarily undefined.
+    result = pd.Series(np.nan, index=y.index, dtype=float)
+    padded = np.r_[False, finite, False]
+    starts = np.flatnonzero(~padded[:-1] & padded[1:])
+    stops = np.flatnonzero(padded[:-1] & ~padded[1:])
+    for start, stop in zip(starts, stops):
+        result.iloc[start] = y.iloc[start]
+        if start + 1 < stop:
+            increments = delt_clean.iloc[start + 1:stop].interpolate(
+                limit_direction="both"
+            ).fillna(0.0)
+            result.iloc[start + 1:stop] = (
+                y.iloc[start] + increments.cumsum()
+            ).to_numpy()
 
-    delt_clean = delt_clean.interpolate(limit_direction="both")
-
-    result = y.iloc[0] + delt_clean.cumsum()
-
-
-    return pd.Series(result, index=y.index), slip_mask, n_slips
+    return result, slip_mask, n_slips
 
 def filter_signal_cascaded(x, f_N=0.1, fs=10):
         # To do: design a non-causal filter 

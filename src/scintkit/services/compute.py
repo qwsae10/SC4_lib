@@ -29,7 +29,7 @@ def pseudorange_tec(P1_m, P2_m, f1_hz, f2_hz):
     return tec_factor * (P2_m - P1_m)/1e16
 
 def add_tec_columns(df, pair="13", fs=None):
-    df = df.reset_index(drop=True).copy()
+    df = df.reset_index(drop=True).copy() 
 
 
 
@@ -40,21 +40,30 @@ def add_tec_columns(df, pair="13", fs=None):
 
         phi1 = g[f"cph{N1}"]
         phi2 = g[f"cph{N2}"]
-        rng1 = g[f"rng{N1}"]
-        rng2 = g[f"rng{N2}"]
+        # A zero pseudorange is the receiver's missing-value sentinel, not a
+        # physical range. Treat it as missing before computing TEC.
+        rng1 = g[f"rng{N1}"].replace(0, np.nan)
+        rng2 = g[f"rng{N2}"].replace(0, np.nan)
+        f1_hz = g[f"freq_{N1}"] * 1e6
+        f2_hz = g[f"freq_{N2}"] * 1e6
+
+        carrier_valid = (
+            phi1.notna()
+            & phi2.notna()
+            & f1_hz.notna()
+            & f2_hz.notna()
+            & f1_hz.ne(f2_hz)
+        )
         # if carrier inputs invalid
-        if phi1.isna().all() or phi2.isna().all():
+        if not carrier_valid.any():
             carrier = np.full(len(g), np.nan)
             n_slip_carrier = 0
         else:
-            f1_hz = g[f"freq_{N1}"] * 1e6
-            f2_hz = g[f"freq_{N2}"] * 1e6
-
             carrier = carrier_phase_tec(
-                phi1_cyc=phi1,
-                phi2_cyc=phi2,
-                f1_hz=f1_hz,
-                f2_hz=f2_hz,
+                phi1_cyc=phi1.where(carrier_valid),
+                phi2_cyc=phi2.where(carrier_valid),
+                f1_hz=f1_hz.where(carrier_valid),
+                f2_hz=f2_hz.where(carrier_valid),
             )
 
             carrier, _, n_slip_carrier = repair_discontinuities_pos(
@@ -64,18 +73,22 @@ def add_tec_columns(df, pair="13", fs=None):
             carrier = carrier - np.nanmean(carrier)
 
         # if pseudorange inputs invalid
-        if rng1.isna().all() or rng2.isna().all():
+        pseudo_valid = (
+            rng1.notna()
+            & rng2.notna()
+            & f1_hz.notna()
+            & f2_hz.notna()
+            & f1_hz.ne(f2_hz)
+        )
+        if not pseudo_valid.any():
             pseudo = np.full(len(g), np.nan)
             n_slip_pseudo = 0
         else:
-            f1_hz = g[f"freq_{N1}"] * 1e6
-            f2_hz = g[f"freq_{N2}"] * 1e6
-
             pseudo = pseudorange_tec(
-                P1_m=rng1,
-                P2_m=rng2,
-                f1_hz=f1_hz,
-                f2_hz=f2_hz,
+                P1_m=rng1.where(pseudo_valid),
+                P2_m=rng2.where(pseudo_valid),
+                f1_hz=f1_hz.where(pseudo_valid),
+                f2_hz=f2_hz.where(pseudo_valid),
             )
 
             pseudo, _, n_slip_pseudo = repair_discontinuities_pos(
