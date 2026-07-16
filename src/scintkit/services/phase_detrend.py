@@ -12,7 +12,7 @@ def mem(stage):
     print(f"\n===== {stage} =====")
     print(f"RSS Memory : {rss:.2f} GB")
 
-def detect_sampling_rate(df):
+'''def detect_sampling_rate(df):
     """
     detect the sampling rate of the data by looking at the number of samples per minute per PRN.
     """
@@ -26,7 +26,7 @@ def detect_sampling_rate(df):
     )
 
 
-    '''n = counts.n_samples.max()
+    n = counts.n_samples.max()
 
     threshold = 10
     if abs(n-600) < threshold:
@@ -38,7 +38,7 @@ def detect_sampling_rate(df):
     elif abs(n-3000) < threshold:
         return 3000/60
     else:
-        return None'''
+        return None
     
 # added by Priya
     n = counts.n_samples.max()
@@ -69,7 +69,44 @@ def detect_sampling_rate(df):
 
     else:
         print("Returning None")
-        return None #priya end
+        return None #priya end'''
+
+def detect_sampling_rate(df):
+
+    print("\n========== DEBUG detect_sampling_rate ==========")
+
+    dt = (
+        df.sort_values("datetime")["datetime"]
+          .diff()
+          .dt.total_seconds()
+    )
+
+    # Remove zeros and NaNs
+    dt = dt[(dt > 0) & np.isfinite(dt)]
+
+    print("Number of intervals:", len(dt))
+
+    print("\nFirst 20 time intervals:")
+    print(dt.head(20))
+
+    print("\nStatistics:")
+    print(dt.describe())
+
+    median_dt = dt.median()
+
+    print("\nMedian dt =", median_dt)
+
+    if pd.isna(median_dt):
+        print("Could not determine sampling rate.")
+        return None
+
+    fs = round(1 / median_dt)
+
+    print("Detected fs =", fs, "Hz")
+
+    print("===============================================\n")
+
+    return fs
 
    
 
