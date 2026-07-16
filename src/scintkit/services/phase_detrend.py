@@ -12,7 +12,7 @@ def mem(stage):
     print(f"\n===== {stage} =====")
     print(f"RSS Memory : {rss:.2f} GB")
 
-'''def detect_sampling_rate(df):
+def detect_sampling_rate(df):
     """
     detect the sampling rate of the data by looking at the number of samples per minute per PRN.
     """
@@ -41,7 +41,7 @@ def mem(stage):
         return None
     
 # added by Priya
-    n = counts.n_samples.max()
+    '''n = counts.n_samples.max()
 
     print("\nMaximum samples =", n)
 
@@ -71,7 +71,7 @@ def mem(stage):
         print("Returning None")
         return None #priya end'''
 
-def detect_sampling_rate(df):
+'''def detect_sampling_rate(df):
 
     print("\n========== DEBUG detect_sampling_rate ==========")
 
@@ -106,7 +106,7 @@ def detect_sampling_rate(df):
 
     print("===============================================\n")
 
-    return fs
+    return fs'''
 
    
 
