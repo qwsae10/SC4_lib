@@ -8,9 +8,6 @@ def run_sp3_pipeline(
     parquet_dir,
     sp3_dir,
     output_dir,
-    rx_lat,#COORDINATES ARE IN THE MIDLE OF THE Receivers
-    rx_long,
-    rx_hei,
 ):
     """
     Apply SP3 merge to every Level-3 parquet file.
@@ -74,9 +71,6 @@ def run_sp3_pipeline(
                 parquet_file=parquet_file,
                 sp3_file=sp3_file,
                 output_dir=output_dir,
-                rx_lat=rx_lat,
-                rx_long=rx_long,
-                rx_hei=rx_hei,
             )
 
             print(f"✓ Saved : {outfile.name}")
