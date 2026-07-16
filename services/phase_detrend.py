@@ -26,7 +26,7 @@ def detect_sampling_rate(df):
     )
 
 
-    '''n = counts.n_samples.max()
+    n = counts.n_samples.max()
 
     threshold = 10
     if abs(n-600) < threshold:
@@ -38,10 +38,10 @@ def detect_sampling_rate(df):
     elif abs(n-3000) < threshold:
         return 3000/60
     else:
-        return None'''
+        return None
     
 # added by Priya
-    n = counts.n_samples.max()
+    '''n = counts.n_samples.max()
 
     print("\nMaximum samples =", n)
 
@@ -69,7 +69,7 @@ def detect_sampling_rate(df):
 
     else:
         print("Returning None")
-        return None #priya end
+        return None #priya end'''
 
    
 
