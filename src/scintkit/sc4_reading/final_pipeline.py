@@ -4,7 +4,7 @@ import pandas as pd
 from bin_to_parquet import run_pipeline
 from add_elevaz_pipeline import run_sp3_pipeline
 from lvl3_pipeline import run_lvl3_pipeline
-from SP3_download_pipeline import download_sp3_files
+from SP3_download_func import download_sp3_files
 
 def get_input():
     #Get user input for the binary files
@@ -20,7 +20,7 @@ def main():
     txt_dir = binary_dir / "txt"
     mearem_dir = binary_dir / "mearem"
     lvl0_dir = binary_dir / "lvl0" 
-    sp3_dir = binary_dir / "sp3"
+    sp3_dir = binary_dir
     lvl2_dir = binary_dir / "lvl2"
     lvl3_dir = binary_dir / "lvl3"  
 
