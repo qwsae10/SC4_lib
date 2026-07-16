@@ -4,14 +4,17 @@ import pandas as pd
 from bin_to_parquet import run_pipeline
 from add_elevaz_pipeline import run_sp3_pipeline
 from lvl3_pipeline import run_lvl3_pipeline
+from SP3_download_pipeline import download_sp3_files
 
 def get_input():
     #Get user input for the binary files
     binary_dir = input("Enter the path to the binary files:")
-    return binary_dir
+    start_date = input("Start date (YYYY-MM-DD): ").strip()
+    end_date = input("End date (YYYY-MM-DD): ").strip()
+    return binary_dir, start_date, end_date
 
 def main():
-    binary_dir = get_input()
+    binary_dir, start_date, end_date = get_input()
 
     binary_dir = Path(binary_dir)
     txt_dir = binary_dir / "txt"
@@ -31,6 +34,14 @@ def main():
     )
 
     print("Binary to Parquet pipeline completed.")
+
+    download_sp3_files(
+        start_date = start_date,
+        end_date = end_date,
+        output_dir = sp3_dir,
+    )
+
+    print("SP3 files downloaded successfully.")
 
     run_sp3_pipeline(
         parquet_dir=lvl0_dir,
