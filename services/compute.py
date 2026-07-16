@@ -39,7 +39,7 @@ def pseudorange_tec(P1_m, P2_m, f1_hz, f2_hz):
 
     return tec_factor * (P2_m - P1_m)/1e16
 
-'''def add_tec_columns(df, pair="13", fs=None):
+def add_tec_columns(df, pair="13", fs=None):
     #df = df.reset_index(drop=True).copy()
     pass
 
@@ -106,11 +106,11 @@ def pseudorange_tec(P1_m, P2_m, f1_hz, f2_hz):
         )
     )
 
-    return out'''
+    return out
 
 #Added by Priya 
 
-def add_tec_columns(df, pair="13", fs=None):
+'''def add_tec_columns(df, pair="13", fs=None):
 
     mem("Start add_tec_columns")
 
@@ -195,7 +195,7 @@ def add_tec_columns(df, pair="13", fs=None):
         df.loc[idx, f"tec_cph{pair}"] = carrier
         df.loc[idx, f"tec_rng{pair}"] = pseudo
 
-    return df
+    return df'''
 
 
 def compute_s4(snr):
@@ -316,7 +316,7 @@ def add_products(df,verbose=False):
     if not agg_dict:
         return df
 
-    '''products = (
+    products = (
         df.groupby(group_cols, sort=False)
         .agg(**agg_dict)
         .reset_index()
@@ -325,10 +325,10 @@ def add_products(df,verbose=False):
         print("Merging products back to original dataframe...")
     df = df.merge(products, on=group_cols, how="left")
 
-    return df'''
+    return df
     #Added by Priya
 
-    if verbose:
+    '''if verbose:
        print("Computing minute products...")
 
     groups = df.groupby(group_cols, sort=False)
@@ -341,7 +341,7 @@ def add_products(df,verbose=False):
 
         mem(new_col)
 
-    return df
+    return df'''
     mem("After add_products") 
 
 # %%
