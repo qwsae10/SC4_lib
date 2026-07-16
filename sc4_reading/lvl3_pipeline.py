@@ -129,18 +129,18 @@ def run_lvl3_pipeline(
             print(f)
 
 
-'''if __name__ == "__main__":
+if __name__ == "__main__":
 
     run_lvl3_pipeline(
 
-        lvl0_dir="/home/dal674840/scratch/mx02_4hr_parquet_lvl0",
+        lvl0_dir="/home/dal674840/scratch/20241010",
 
-        lvl2_dir="/home/dal674840/scratch/mx02_lvl2_parquet",
+        lvl2_dir="/home/dal674840/scratch/1010_lvl2_parquet",
 
-        lvl3_dir="/home/dal674840/scratch/mx02_4hr_parquet_lvl3",
+        lvl3_dir="/home/dal674840/scratch/1010_4hr_parquet_lvl3",
 
         mode="lvl3",
 
         verbose=True,
 
-    )'''
+    )
