@@ -153,6 +153,53 @@ def compute_sigma_phi(phase):
     return np.std(phase) if len(phase) > 0 else np.nan
 
 
+SIGMA_PHI_MAX_DROPPED_SAMPLES = 10
+S4_MIN_SAMPLE_FRACTION = 0.8
+
+
+def _add_quality_flags(products, fs):
+    """Add binary, per-frequency quality flags to minute products."""
+    if fs is None or not np.isfinite(fs) or fs <= 0:
+        raise ValueError(
+            "A positive sampling rate is required to compute quality flags."
+        )
+
+    expected_samples = fs * 60
+    sigma_phi_min_samples = expected_samples - SIGMA_PHI_MAX_DROPPED_SAMPLES
+    s4_min_samples = expected_samples * S4_MIN_SAMPLE_FRACTION
+    is_glonass = products["prn"].astype(str).str.startswith("R")
+
+    internal_columns = []
+    for i in ("1", "2", "3"):
+        phase_count_col = f"n_{i}"
+        edge_gap_col = f"_sigma_phi_edge_gap_{i}"
+        s4_count_col = f"_s4_sample_count_{i}"
+
+        if phase_count_col in products.columns:
+            if edge_gap_col in products.columns:
+                has_edge_gap = products[edge_gap_col].astype(bool)
+            else:
+                has_edge_gap = pd.Series(False, index=products.index)
+
+            sigma_phi_bad = (
+                has_edge_gap
+                | products[phase_count_col].lt(sigma_phi_min_samples)
+                #| is_glonass #maybe add this back in later if we want to filter out GLONASS
+            )
+            products[f"sigma_phi_quality_flag_{i}"] = sigma_phi_bad.astype(
+                np.int8
+            )
+
+        if s4_count_col in products.columns:
+            products[f"s4_quality_flag_{i}"] = products[s4_count_col].lt(
+                s4_min_samples
+            ).astype(np.int8)
+
+        internal_columns.extend([edge_gap_col, s4_count_col])
+
+    return products.drop(columns=internal_columns, errors="ignore")
+
+
 def add_products(df,verbose=False):
     """
     This function takes a full-rate dataframe (fs=20 or 10 Hz) at and computes various products:
@@ -160,7 +207,8 @@ def add_products(df,verbose=False):
     - sigma_phi_1, sigma_phi_2, sigma_phi_3: standard deviation of detrended phases with clock noise removed, for each frequency
     - n_1, n_2, n_3: number of valid samples for each frequency
     - n_cycleslip_1, n_cycleslip_2, n_cycleslip_3: number of detected cycle slips for each phase
-    - quality_1, quality_2, quality_3: binary flags indicating potential quality issues (0 means no issue, 1 or more means issue) 
+    - sigma_phi_quality_flag_1/2/3: binary sigma-phi quality flags; 0 is good and 1 marks an edge/gap, too many dropped samples, or GLONASS
+    - s4_quality_flag_1/2/3: binary S4 quality flags; 0 is good and 1 marks fewer than 80% of the expected samples
     - s4_1, s4_2, s4_3: S4 index computed from SNR values for each frequency
     - s4_corrected_1, s4_corrected_2, s4_corrected_3: S4 index corrected for bias based on Van Dierendonck (1993) method
     The function groups the data by PRN and 1-minute bins to compute these products, and then merges the results back to the original dataframe in the same time bins.
@@ -204,9 +252,10 @@ def add_products(df,verbose=False):
         if cycleslip_col in df.columns:
             agg_dict[f"n_cycleslip_{i}"] = (cycleslip_col, compute_n_cycleslips)
 
-        #if close to edge of pass, mark as potential quality issue
+        # Preserve the edge/gap result until it can be combined with the
+        # sample-count and constellation checks below.
         if edgegap_col in df.columns:
-            agg_dict[f"quality_{i}"] = (
+            agg_dict[f"_sigma_phi_edge_gap_{i}"] = (
                 edgegap_col,
                 lambda x: int(x.fillna(False).astype(bool).any())
             )
@@ -214,6 +263,10 @@ def add_products(df,verbose=False):
         if snr_col in df.columns:
             agg_dict[f"s4_{i}"] = (snr_col, compute_s4)
             agg_dict[f"s4_corrected_{i}"] = (snr_col, compute_s4_corrected)
+            agg_dict[f"_s4_sample_count_{i}"] = (
+                snr_col,
+                compute_n_samples,
+            )
     if not agg_dict:
         return df
 
@@ -222,6 +275,7 @@ def add_products(df,verbose=False):
         .agg(**agg_dict)
         .reset_index()
     )
+    products = _add_quality_flags(products, fs=fs)
     if verbose:
         print("Merging products back to original dataframe...")
     df = df.merge(products, on=group_cols, how="left")

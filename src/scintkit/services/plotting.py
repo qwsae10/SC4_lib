@@ -6,15 +6,12 @@ import numpy as np
 import pandas as pd
 
 
-def individual_summary_plot(df,timecol='secbin',elmask=10,n_thresh=0.98):
+def individual_summary_plot(df,timecol='secbin',elmask=10):
 
     df = df.sort_values(timecol)
 
     valid = df.groupby("prn")["s4_1"].apply(lambda x: x.notna().sum())
     prns = valid[valid > 300].index.tolist()
-    tot_n=np.nanmax(df['n_1'])
-
-
     n = len(prns)
     ncols = int(np.ceil(np.sqrt(n)))
     nrows = int(np.ceil(n / ncols))
@@ -58,33 +55,31 @@ def individual_summary_plot(df,timecol='secbin',elmask=10,n_thresh=0.98):
         ax1b.set_ylim(0, 90)
 
         sp_mask1=(
-            (g["quality_1"] ==0)&
-            (g['elev']>elmask)&(g['elev']<91)&
-            (g['n_1']/tot_n>n_thresh)
+            (g["sigma_phi_quality_flag_1"] == 0)&
+            (g['elev']>elmask)&(g['elev']<91)
             )
         
         g.loc[~sp_mask1, 'sigma_phi_1'] = np.nan
 
         sp_mask2=(
-            (g["quality_2"] ==0)&
+            (g["sigma_phi_quality_flag_2"] == 0)&
             (g['elev']>elmask)&
-            (g['elev']<91)&
-            (g['n_2']/tot_n>n_thresh)
+            (g['elev']<91)
             )
             
         g.loc[~sp_mask2, 'sigma_phi_2'] = np.nan
 
         s4_mask1=(
+            (g["s4_quality_flag_1"] == 0)&
             (g['elev']>elmask)&
-            (g['elev']<91)&
-            (g['n_1']/tot_n>n_thresh)
+            (g['elev']<91)
             )
         g.loc[~s4_mask1, 's4_1'] = np.nan
 
         s4_mask2=(
+            (g["s4_quality_flag_2"] == 0)&
             (g['elev']>elmask)&
-            (g['elev']<91)&
-            (g['n_2']/tot_n>n_thresh)
+            (g['elev']<91)
             )
         
         g.loc[~s4_mask2, 's4_2'] = np.nan
@@ -132,4 +127,3 @@ def individual_summary_plot(df,timecol='secbin',elmask=10,n_thresh=0.98):
     fig.tight_layout()
     plt.show()
     return fig, axes
-

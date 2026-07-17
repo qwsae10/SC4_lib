@@ -15,7 +15,6 @@ def detect_sampling_rate(df):
         .reset_index(name='n_samples')
     )
 
-
     n = counts.n_samples.max()
 
     threshold = 10

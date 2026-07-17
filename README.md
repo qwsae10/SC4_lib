@@ -13,6 +13,9 @@ This repository provides utilities and pipelines for:
 - running processing workflows
 - plotting ScintPi data
 
+The Level 3 product schema and automatic quality-flag rules are documented in
+[`docs/lvl3.md`](docs/lvl3.md).
+
 ---
 
 ## Project Layout
