@@ -1,10 +1,6 @@
 #%%
-import os
-
 import pandas as pd
 import numpy as np
-import psutil
-import os
 
 from scintkit.services.phase_detrend import process_phases,repair_discontinuities_pos,detect_sampling_rate
 from scintkit.preprocessing.format import temp_formating
@@ -12,13 +8,6 @@ from scintkit.preprocessing.format import temp_formating
 
 import numpy as np
 import pdb
-
-#Added by Priya 
-
-def mem(stage):
-    p = psutil.Process(os.getpid())
-    print(f"\n[{stage}]")
-    print(f"Memory (RSS): {p.memory_info().rss / 1024**3:.2f} GB") #end
 
 def carrier_phase_tec(phi1_cyc, phi2_cyc, f1_hz, f2_hz):
     c = 299792458  # m/s
@@ -39,9 +28,8 @@ def pseudorange_tec(P1_m, P2_m, f1_hz, f2_hz):
 
     return tec_factor * (P2_m - P1_m)/1e16
 
-'''def add_tec_columns(df, pair="13", fs=None):
-    #df = df.reset_index(drop=True).copy()
-    pass
+def add_tec_columns(df, pair="13", fs=None):
+    df = df.reset_index(drop=True).copy() 
 
 
 
@@ -52,21 +40,30 @@ def pseudorange_tec(P1_m, P2_m, f1_hz, f2_hz):
 
         phi1 = g[f"cph{N1}"]
         phi2 = g[f"cph{N2}"]
-        rng1 = g[f"rng{N1}"]
-        rng2 = g[f"rng{N2}"]
+        # A zero pseudorange is the receiver's missing-value sentinel, not a
+        # physical range. Treat it as missing before computing TEC.
+        rng1 = g[f"rng{N1}"].replace(0, np.nan)
+        rng2 = g[f"rng{N2}"].replace(0, np.nan)
+        f1_hz = g[f"freq_{N1}"] * 1e6
+        f2_hz = g[f"freq_{N2}"] * 1e6
+
+        carrier_valid = (
+            phi1.notna()
+            & phi2.notna()
+            & f1_hz.notna()
+            & f2_hz.notna()
+            & f1_hz.ne(f2_hz)
+        )
         # if carrier inputs invalid
-        if phi1.isna().all() or phi2.isna().all():
+        if not carrier_valid.any():
             carrier = np.full(len(g), np.nan)
             n_slip_carrier = 0
         else:
-            f1_hz = g[f"freq_{N1}"] * 1e6
-            f2_hz = g[f"freq_{N2}"] * 1e6
-
             carrier = carrier_phase_tec(
-                phi1_cyc=phi1,
-                phi2_cyc=phi2,
-                f1_hz=f1_hz,
-                f2_hz=f2_hz,
+                phi1_cyc=phi1.where(carrier_valid),
+                phi2_cyc=phi2.where(carrier_valid),
+                f1_hz=f1_hz.where(carrier_valid),
+                f2_hz=f2_hz.where(carrier_valid),
             )
 
             carrier, _, n_slip_carrier = repair_discontinuities_pos(
@@ -76,18 +73,22 @@ def pseudorange_tec(P1_m, P2_m, f1_hz, f2_hz):
             carrier = carrier - np.nanmean(carrier)
 
         # if pseudorange inputs invalid
-        if rng1.isna().all() or rng2.isna().all():
+        pseudo_valid = (
+            rng1.notna()
+            & rng2.notna()
+            & f1_hz.notna()
+            & f2_hz.notna()
+            & f1_hz.ne(f2_hz)
+        )
+        if not pseudo_valid.any():
             pseudo = np.full(len(g), np.nan)
             n_slip_pseudo = 0
         else:
-            f1_hz = g[f"freq_{N1}"] * 1e6
-            f2_hz = g[f"freq_{N2}"] * 1e6
-
             pseudo = pseudorange_tec(
-                P1_m=rng1,
-                P2_m=rng2,
-                f1_hz=f1_hz,
-                f2_hz=f2_hz,
+                P1_m=rng1.where(pseudo_valid),
+                P2_m=rng2.where(pseudo_valid),
+                f1_hz=f1_hz.where(pseudo_valid),
+                f2_hz=f2_hz.where(pseudo_valid),
             )
 
             pseudo, _, n_slip_pseudo = repair_discontinuities_pos(
@@ -106,97 +107,7 @@ def pseudorange_tec(P1_m, P2_m, f1_hz, f2_hz):
         )
     )
 
-    return out'''
-
-#Added by Priya 
-
-def add_tec_columns(df, pair="13", fs=None):
-
-    mem("Start add_tec_columns")
-
-    # Create output columns if they don't already exist
-    df[f"tec_cph{pair}"] = np.nan
-    df[f"tec_rng{pair}"] = np.nan
-
-    N1 = pair[0]
-    N2 = pair[1]
-
-    for key, idx in df.groupby("prn", sort=False).groups.items():
-
-        g = df.loc[idx]
-
-        phi1 = g[f"cph{N1}"]
-        phi2 = g[f"cph{N2}"]
-        rng1 = g[f"rng{N1}"]
-        rng2 = g[f"rng{N2}"]
-
-        # ----------------------------
-        # Carrier TEC
-        # ----------------------------
-        if phi1.isna().all() or phi2.isna().all():
-
-            carrier = np.full(len(g), np.nan)
-            n_slip_carrier = 0
-
-        else:
-
-            f1_hz = g[f"freq_{N1}"] * 1e6
-            f2_hz = g[f"freq_{N2}"] * 1e6
-
-            carrier = carrier_phase_tec(
-                phi1_cyc=phi1,
-                phi2_cyc=phi2,
-                f1_hz=f1_hz,
-                f2_hz=f2_hz,
-            )
-
-            carrier, _, n_slip_carrier = repair_discontinuities_pos(
-                carrier,
-                fs=fs,
-                threshold=1,
-                svid=key,
-                verbose=True,
-            )
-
-            # Same behaviour as original code
-            carrier = carrier - np.nanmean(carrier)
-
-        # ----------------------------
-        # Pseudorange TEC
-        # ----------------------------
-        if rng1.isna().all() or rng2.isna().all():
-
-            pseudo = np.full(len(g), np.nan)
-            n_slip_pseudo = 0
-
-        else:
-
-            f1_hz = g[f"freq_{N1}"] * 1e6
-            f2_hz = g[f"freq_{N2}"] * 1e6
-
-            pseudo = pseudorange_tec(
-                P1_m=rng1,
-                P2_m=rng2,
-                f1_hz=f1_hz,
-                f2_hz=f2_hz,
-            )
-
-            pseudo, _, n_slip_pseudo = repair_discontinuities_pos(
-                pseudo,
-                fs=fs,
-                threshold=1,
-                svid=key,
-                verbose=False,
-            )
-
-        # ---------------------------------------
-        # Write results directly into dataframe
-        # ---------------------------------------
-        df.loc[idx, f"tec_cph{pair}"] = carrier
-        df.loc[idx, f"tec_rng{pair}"] = pseudo
-
-    return df
-
+    return out
 
 def compute_s4(snr):
     snr = snr.dropna()
@@ -242,6 +153,53 @@ def compute_sigma_phi(phase):
     return np.std(phase) if len(phase) > 0 else np.nan
 
 
+SIGMA_PHI_MAX_DROPPED_SAMPLES = 10
+S4_MIN_SAMPLE_FRACTION = 0.8
+
+
+def _add_quality_flags(products, fs):
+    """Add binary, per-frequency quality flags to minute products."""
+    if fs is None or not np.isfinite(fs) or fs <= 0:
+        raise ValueError(
+            "A positive sampling rate is required to compute quality flags."
+        )
+
+    expected_samples = fs * 60
+    sigma_phi_min_samples = expected_samples - SIGMA_PHI_MAX_DROPPED_SAMPLES
+    s4_min_samples = expected_samples * S4_MIN_SAMPLE_FRACTION
+    is_glonass = products["prn"].astype(str).str.startswith("R")
+
+    internal_columns = []
+    for i in ("1", "2", "3"):
+        phase_count_col = f"n_{i}"
+        edge_gap_col = f"_sigma_phi_edge_gap_{i}"
+        s4_count_col = f"_s4_sample_count_{i}"
+
+        if phase_count_col in products.columns:
+            if edge_gap_col in products.columns:
+                has_edge_gap = products[edge_gap_col].astype(bool)
+            else:
+                has_edge_gap = pd.Series(False, index=products.index)
+
+            sigma_phi_bad = (
+                has_edge_gap
+                | products[phase_count_col].lt(sigma_phi_min_samples)
+                #| is_glonass #maybe add this back in later if we want to filter out GLONASS
+            )
+            products[f"sigma_phi_quality_flag_{i}"] = sigma_phi_bad.astype(
+                np.int8
+            )
+
+        if s4_count_col in products.columns:
+            products[f"s4_quality_flag_{i}"] = products[s4_count_col].lt(
+                s4_min_samples
+            ).astype(np.int8)
+
+        internal_columns.extend([edge_gap_col, s4_count_col])
+
+    return products.drop(columns=internal_columns, errors="ignore")
+
+
 def add_products(df,verbose=False):
     """
     This function takes a full-rate dataframe (fs=20 or 10 Hz) at and computes various products:
@@ -249,30 +207,21 @@ def add_products(df,verbose=False):
     - sigma_phi_1, sigma_phi_2, sigma_phi_3: standard deviation of detrended phases with clock noise removed, for each frequency
     - n_1, n_2, n_3: number of valid samples for each frequency
     - n_cycleslip_1, n_cycleslip_2, n_cycleslip_3: number of detected cycle slips for each phase
-    - quality_1, quality_2, quality_3: binary flags indicating potential quality issues (0 means no issue, 1 or more means issue) 
+    - sigma_phi_quality_flag_1/2/3: binary sigma-phi quality flags; 0 is good and 1 marks an edge/gap, too many dropped samples, or GLONASS
+    - s4_quality_flag_1/2/3: binary S4 quality flags; 0 is good and 1 marks fewer than 80% of the expected samples
     - s4_1, s4_2, s4_3: S4 index computed from SNR values for each frequency
     - s4_corrected_1, s4_corrected_2, s4_corrected_3: S4 index corrected for bias based on Van Dierendonck (1993) method
     The function groups the data by PRN and 1-minute bins to compute these products, and then merges the results back to the original dataframe in the same time bins.
     """
 
-    mem("Start add_products")
-
     if verbose:
         print("Ensuring format...")
-    print("A")    
     df=temp_formating(df)
-    print("B")
-    mem("After temp_formating")
     if verbose:
-        print("Processing phases...")
-    print("C")      
-    mem("Before process_phases") 
+        print("Processing phases...")   
     df = process_phases(df)
-    print("D")
-    mem("After process_phases")
 
     fs=detect_sampling_rate(df)
-    mem("After detect_sampling_rate")
     
     if verbose:
         print("Computing TEC...")
@@ -303,9 +252,10 @@ def add_products(df,verbose=False):
         if cycleslip_col in df.columns:
             agg_dict[f"n_cycleslip_{i}"] = (cycleslip_col, compute_n_cycleslips)
 
-        #if close to edge of pass, mark as potential quality issue
+        # Preserve the edge/gap result until it can be combined with the
+        # sample-count and constellation checks below.
         if edgegap_col in df.columns:
-            agg_dict[f"quality_{i}"] = (
+            agg_dict[f"_sigma_phi_edge_gap_{i}"] = (
                 edgegap_col,
                 lambda x: int(x.fillna(False).astype(bool).any())
             )
@@ -313,35 +263,23 @@ def add_products(df,verbose=False):
         if snr_col in df.columns:
             agg_dict[f"s4_{i}"] = (snr_col, compute_s4)
             agg_dict[f"s4_corrected_{i}"] = (snr_col, compute_s4_corrected)
+            agg_dict[f"_s4_sample_count_{i}"] = (
+                snr_col,
+                compute_n_samples,
+            )
     if not agg_dict:
         return df
 
-    '''products = (
+    products = (
         df.groupby(group_cols, sort=False)
         .agg(**agg_dict)
         .reset_index()
     )
+    products = _add_quality_flags(products, fs=fs)
     if verbose:
         print("Merging products back to original dataframe...")
     df = df.merge(products, on=group_cols, how="left")
 
-    return df'''
-    #Added by Priya
-
-    if verbose:
-       print("Computing minute products...")
-
-    groups = df.groupby(group_cols, sort=False)
-
-    for new_col, (src_col, func) in agg_dict.items():
-
-        print(f"Computing {new_col}")
-
-        df[new_col] = groups[src_col].transform(func)
-
-        mem(new_col)
-
     return df
-    mem("After add_products") 
 
 # %%

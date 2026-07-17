@@ -1,14 +1,7 @@
 
 import pandas as pd
 import numpy as np
-import psutil
-import os
 
-def mem(stage):
-    p = psutil.Process(os.getpid())
-    rss = p.memory_info().rss / 1024**3
-    print(f"\n===== {stage} =====")
-    print(f"RSS Memory : {rss:.2f} GB")
 
 def make_prn(dfin):
 
@@ -22,13 +15,7 @@ def make_prn(dfin):
         "SBAS": "S",
         "SBS": "S",
     }
-    #return dfin["cons"].map(constellation_map) + dfin["svid"].astype(int).astype(str).str.zfill(2) 
-    cons = dfin["cons"].map(constellation_map)
-    svid = dfin["svid"].to_numpy(dtype=np.int16)
-
-    dfin["prn"] = [f"{c}{s:02d}" for c, s in zip(cons, svid)]
-
-    return dfin["prn"]
+    return dfin["cons"].map(constellation_map) + dfin["svid"].astype(int).astype(str).str.zfill(2) 
 
 
 def zero_cph_snr_to_nan(df):
@@ -42,92 +29,23 @@ def zero_cph_snr_to_nan(df):
                                                                                  
 def temp_formating(df):
 
-    mem("After temp_formating")
-
     gnssdic_loop = {0: 'GPS', 1: 'SBS', 2: 'GAL', 3: 'BDS', 6: 'GLO'}
     #check if cons is numeric
     s = pd.to_numeric(df['cons'], errors='coerce')
 
     if s.notna().all():
         df['cons'] = s.map(gnssdic_loop)
-    #df = df[~((df['cons'] == 'GLO') & (df['svid'] == 255))].copy()
-    #added by Priya
+    df = df[~((df['cons'] == 'GLO') & (df['svid'] == 255))].copy()
 
-    bad = df["cons"].eq("GLO") & df["svid"].eq(255)
-    df.drop(index=df.index[bad], inplace=True)
-
-
-    #df = df.loc[mask]
-
-
-    #df=df.reset_index()
+    df=df.reset_index()
     df['minbin'] = df['datetime'].dt.floor('1min')
     df['prn']=make_prn(df)
     df=add_sigs(df)
     df=zero_cph_snr_to_nan(df)
     return df
 
-'''def temp_formating(df):
-
-    gnssdic_loop = {
-        0: "GPS",
-        1: "SBS",
-        2: "GAL",
-        3: "BDS",
-        6: "GLO",
-    }
-
-    # -------------------------------------------------------
-    # Convert numeric constellation IDs to strings if needed
-    # -------------------------------------------------------
-    
-    s = pd.to_numeric(df["cons"], errors="coerce")
-
-    if s.notna().all():
-        df["cons"] = s.map(gnssdic_loop)
-
-    # -------------------------------------------------------
-    # Reduce memory usage
-    # -------------------------------------------------------
-
-    df["cons"] = df["cons"].astype("category")
-
-   
-
-    # -------------------------------------------------------
-    # Create minute bins
-    # -------------------------------------------------------
-
-    df["minbin"] = df["datetime"].dt.floor("1min")
-
-    # -------------------------------------------------------
-    # Create PRN
-    # -------------------------------------------------------
-
-    df["prn"] = make_prn(df)
-
-    df["prn"] = df["prn"].astype("category")
-
-    # -------------------------------------------------------
-    # Add signal names and frequencies
-    # -------------------------------------------------------
-
-    df = add_sigs(df)
-
-    # -------------------------------------------------------
-    # Replace zero carrier phases/SNR with NaN
-    # -------------------------------------------------------
-
-    df = zero_cph_snr_to_nan(df)
-
-    return df'''  
-
-
-
 
 def add_sigs(df):
-
-    mem("After add_sigs")
 
     mapping = {
     # sig1

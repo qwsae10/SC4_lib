@@ -1,22 +1,12 @@
 #%%%
 import numpy as np
 import pandas as pd
-from scipy import signal   
-
-import psutil
-import os
-
-def mem(stage):
-    p = psutil.Process(os.getpid())
-    rss = p.memory_info().rss / 1024**3
-    print(f"\n===== {stage} =====")
-    print(f"RSS Memory : {rss:.2f} GB")
+from scipy import signal    
 
 def detect_sampling_rate(df):
     """
     detect the sampling rate of the data by looking at the number of samples per minute per PRN.
     """
-    mem("After detect_sampling_rate")
     # samples per (minute, prn)
     counts = (
         df
@@ -24,7 +14,6 @@ def detect_sampling_rate(df):
         .size()
         .reset_index(name='n_samples')
     )
-
 
     n = counts.n_samples.max()
 
@@ -39,76 +28,6 @@ def detect_sampling_rate(df):
         return 3000/60
     else:
         return None
-    
-# added by Priya
-    '''n = counts.n_samples.max()
-
-    print("\nMaximum samples =", n)
-
-    threshold = 10
-
-    if abs(n-600) < threshold:
-        print("Returning 10 Hz")
-        return 600/60
-
-    elif abs(n-1200) < threshold:
-        print("Returning 20 Hz")
-        return 1200/60
-
-    elif abs(n-2400) < threshold:
-        print("Returning 40 Hz")
-        return 2400/60
-
-    elif 2930 <= n <= 2950:
-        print("Returning 49 Hz")
-        return 49
-
-    elif 2990 <= n <= 3010:
-        print("Returning 50 Hz")
-        return 50
-
-    else:
-        print("Returning None")
-        return None #priya end'''
-
-'''def detect_sampling_rate(df):
-
-    print("\n========== DEBUG detect_sampling_rate ==========")
-
-    dt = (
-        df.sort_values("datetime")["datetime"]
-          .diff()
-          .dt.total_seconds()
-    )
-
-    # Remove zeros and NaNs
-    dt = dt[(dt > 0) & np.isfinite(dt)]
-
-    print("Number of intervals:", len(dt))
-
-    print("\nFirst 20 time intervals:")
-    print(dt.head(20))
-
-    print("\nStatistics:")
-    print(dt.describe())
-
-    median_dt = dt.median()
-
-    print("\nMedian dt =", median_dt)
-
-    if pd.isna(median_dt):
-        print("Could not determine sampling rate.")
-        return None
-
-    fs = round(1 / median_dt)
-
-    print("Detected fs =", fs, "Hz")
-
-    print("===============================================\n")
-
-    return fs'''
-
-   
 
 def make_prn_local(dfin):
     constellation_map = {
@@ -127,6 +46,10 @@ def make_prn_local(dfin):
 def repair_discontinuities_pos(vec, fs, threshold=1,svid=None,verbose=False):
     y = pd.Series(vec).copy()
 
+    finite = y.notna().to_numpy()
+    if not finite.any():
+        return y, pd.Series(False, index=y.index), 0
+
     window = int(10 * fs)
 
     delt = y.diff()
@@ -139,7 +62,10 @@ def repair_discontinuities_pos(vec, fs, threshold=1,svid=None,verbose=False):
         .ffill()
     )
 
-    good = ((delt - trend).abs() <= threshold).fillna(True)
+    residual = (delt - trend).abs()
+    # Comparisons against NaN evaluate to False, so fillna(True) after the
+    # comparison did not actually protect gaps or short series.
+    good = residual.le(threshold) | residual.isna()
     slip_mask = ~good
     n_slips = int(slip_mask.sum())
  
@@ -150,15 +76,25 @@ def repair_discontinuities_pos(vec, fs, threshold=1,svid=None,verbose=False):
         return pd.Series(vec), slip_mask, n_slips
     delt_clean = delt.where(good, np.nan)
 
-    if len(delt_clean) > 1:
-        delt_clean.iloc[0] = delt_clean.iloc[1]
+    # Anchor each contiguous finite block independently. Previously this used
+    # y.iloc[0], so one missing value at the start of a PRN pass made the whole
+    # repaired series NaN. A single anchor also lost isolated valid samples
+    # after gaps because their phase difference is necessarily undefined.
+    result = pd.Series(np.nan, index=y.index, dtype=float)
+    padded = np.r_[False, finite, False]
+    starts = np.flatnonzero(~padded[:-1] & padded[1:])
+    stops = np.flatnonzero(padded[:-1] & ~padded[1:])
+    for start, stop in zip(starts, stops):
+        result.iloc[start] = y.iloc[start]
+        if start + 1 < stop:
+            increments = delt_clean.iloc[start + 1:stop].interpolate(
+                limit_direction="both"
+            ).fillna(0.0)
+            result.iloc[start + 1:stop] = (
+                y.iloc[start] + increments.cumsum()
+            ).to_numpy()
 
-    delt_clean = delt_clean.interpolate(limit_direction="both")
-
-    result = y.iloc[0] + delt_clean.cumsum()
-
-
-    return pd.Series(result, index=y.index), slip_mask, n_slips
+    return result, slip_mask, n_slips
 
 def filter_signal_cascaded(x, f_N=0.1, fs=10):
         # To do: design a non-causal filter 
@@ -195,7 +131,6 @@ def highpass_phase(
     fs=None,
     f_N=0.1
 ):
-    mem("before highpass_phase")
 
     slip_col = out_col.replace("detrended", "cycleslips")
     df[out_col] = np.nan
@@ -265,7 +200,6 @@ def highpass_phase(
             raise
 
     return df
-    mem("After highpass_phase")
 
 
 
@@ -311,8 +245,7 @@ def highpass_all_phases(df,fs=None,tr=1):
     return df
 
 
-
-def estimate_clock(df, elev_mask=0):
+def estimate_clock(df, elev_mask=10):
 
     value_cols = []
 
@@ -330,9 +263,7 @@ def estimate_clock(df, elev_mask=0):
         return df
 
     # only use high-elevation data to estimate clock
-    mem("before clock_df")
     clock_df = df[(df["elev"] > elev_mask) & (df["elev"] < 90)]
-    mem("estimate_clock : after clock_df")
 
     median_curve = (
         clock_df.melt(
@@ -342,11 +273,9 @@ def estimate_clock(df, elev_mask=0):
         .groupby("datetime")["value"]
         .median()
     )
-    mem("estimate_clock : after median_curve")
 
     # apply clock estimate back to full df
     df["clock_term"] = df["datetime"].map(median_curve)
-    mem("estimate_clock : after clock_term")
 
     return df
 
@@ -363,7 +292,6 @@ def clock_correction(df,out_col="detrended_noclk_cph"):
 
 
 def process_phases(df,fs=None,tr=1):
-    mem("After process_phases")
     fs=detect_sampling_rate(df) if fs is None else fs
 
     df = highpass_all_phases(df,fs,tr)
@@ -371,6 +299,5 @@ def process_phases(df,fs=None,tr=1):
     df = clock_correction(df)
 
     return df
-
 
 # %%

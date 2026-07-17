@@ -115,6 +115,7 @@ def process_one(
             return output_file
 
         version = get_version(input_file)
+        
         if version is None:
             raise ValueError(f"could not determine version from filename: {input_file}")
 

@@ -1,6 +1,5 @@
 
 import os
-import traceback
 from scintkit.preprocessing.format import temp_formating,make_1min,make_1sec
 from scintkit.services.compute import add_products
 from scintkit.services.convert_to_parquet import process_one
@@ -46,7 +45,8 @@ def process(flist, verbose=False,mode='both'):
     - sigma_phi_1, sigma_phi_2, sigma_phi_3: standard deviation of detrended phases with clock noise removed, for each frequency
     - n_1, n_2, n_3: number of valid samples for each frequency
     - n_cycleslip_1, n_cycleslip_2, n_cycleslip_3: number of detected cycle slips for each phase
-    - quality_1, quality_2, quality_3: binary flags indicating potential quality issues (0 means no issue, 1 or more means issue) 
+    - sigma_phi_quality_flag_1/2/3: binary sigma-phi quality flags; 0 is good and 1 marks an edge/gap, too many dropped samples, or GLONASS
+    - s4_quality_flag_1/2/3: binary S4 quality flags; 0 is good and 1 marks fewer than 80% of the expected samples
     - s4_1, s4_2, s4_3: S4 index computed from SNR values for each frequency
     - s4_corrected_1, s4_corrected_2, s4_corrected_3: S4 index corrected for bias based on Van Dierendonck (1993) method
     - clock_term: estimated common clock term (in units of radians/frequency) across all frequencies, used for detrending phases to compute sigma_phi 
@@ -126,7 +126,6 @@ def process(flist, verbose=False,mode='both'):
         except Exception as e:
             print(f"Error processing {fname}") 
             print(e)
-            traceback.print_exc()
             continue
     return converted_files
 
@@ -173,4 +172,3 @@ def process_parallel(flist, n_workers=4, verbose=False, mode="both"):
                 print(f"Worker failed: {e}")
 
     return all_outputs
-
