@@ -4,8 +4,9 @@ import glob
 outputs = process(
     glob.glob("/home/dal674840/scratch/20240629/scintpi3_20240629_*.bin.zip"),
     verbose=True,
-    mode="lvl3"
+    mode="both"
 )
 
 print(outputs)
 
+ 
