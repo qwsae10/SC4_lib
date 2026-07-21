@@ -3,7 +3,7 @@ from scintkit.services.convert_to_parquet import process_files
 
 # Input and output folders
 input_root = "/home/dal674840/scratch/20240629"
-output_root = "/Users/dal674840/scratch/20240629/20240629_parquet"
+output_root = "/home/dal674840/scratch/20240629/20240629_parquet"
 
 # Get all .bin.zip files recursively
 flist = [str(f) for f in Path(input_root).rglob("*.bin.zip")]
