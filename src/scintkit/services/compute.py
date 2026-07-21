@@ -28,13 +28,29 @@ def pseudorange_tec(P1_m, P2_m, f1_hz, f2_hz):
 
     return tec_factor * (P2_m - P1_m)/1e16
 
-def add_tec_columns(df, pair="13", fs=None):
-    df = df.reset_index(drop=True).copy() 
+def add_tec_columns(df, pair="13", fs=None, max_gap="5min"):
+    """Add carrier-phase and pseudorange TEC for a frequency pair.
 
-
+    Each PRN is split into continuous time segments. A time gap strictly
+    greater than ``max_gap`` starts a new segment. Carrier and pseudorange TEC
+    are repaired independently within each segment, then the carrier TEC is
+    shifted so that its segment median matches the pseudorange TEC median at
+    common valid epochs. Carrier TEC is left missing when a segment has no
+    pseudorange overlap and therefore cannot be leveled.
+    """
+    df = df.reset_index(drop=True).copy()
+    gap_threshold = pd.to_timedelta(max_gap)
 
     def _per_prn(key, g):
-        
+        # Phase repair and gap detection both depend on chronological order.
+        # Keep the original index so the caller's row order can be restored.
+        if "datetime" in g.columns:
+            g = g.sort_values("datetime", kind="stable").copy()
+            time = pd.to_datetime(g["datetime"], errors="coerce")
+        else:
+            g = g.copy()
+            time = None
+
         N1 = pair[0]
         N2 = pair[1]
 
@@ -54,25 +70,6 @@ def add_tec_columns(df, pair="13", fs=None):
             & f2_hz.notna()
             & f1_hz.ne(f2_hz)
         )
-        # if carrier inputs invalid
-        if not carrier_valid.any():
-            carrier = np.full(len(g), np.nan)
-            n_slip_carrier = 0
-        else:
-            carrier = carrier_phase_tec(
-                phi1_cyc=phi1.where(carrier_valid),
-                phi2_cyc=phi2.where(carrier_valid),
-                f1_hz=f1_hz.where(carrier_valid),
-                f2_hz=f2_hz.where(carrier_valid),
-            )
-
-            carrier, _, n_slip_carrier = repair_discontinuities_pos(
-                carrier, fs=fs, threshold=1, svid=key, verbose=True
-            )
-
-            carrier = carrier - np.nanmean(carrier)
-
-        # if pseudorange inputs invalid
         pseudo_valid = (
             rng1.notna()
             & rng2.notna()
@@ -80,34 +77,81 @@ def add_tec_columns(df, pair="13", fs=None):
             & f2_hz.notna()
             & f1_hz.ne(f2_hz)
         )
-        if not pseudo_valid.any():
-            pseudo = np.full(len(g), np.nan)
-            n_slip_pseudo = 0
+
+        if time is not None:
+            new_segment = time.diff().gt(gap_threshold) | time.isna()
+
+            # A PRN can remain in the table while one carrier-phase channel is
+            # missing. Split when valid carrier data resume after a long
+            # outage, even if the dataframe still has intervening timestamps.
+            previous_carrier_time = time.where(carrier_valid).ffill().shift()
+            carrier_gap = (
+                carrier_valid
+                & time.sub(previous_carrier_time).gt(gap_threshold)
+            )
+            new_segment |= carrier_gap
+            new_segment.iloc[0] = False
+            segment_id = new_segment.cumsum()
         else:
-            pseudo = pseudorange_tec(
-                P1_m=rng1.where(pseudo_valid),
-                P2_m=rng2.where(pseudo_valid),
-                f1_hz=f1_hz.where(pseudo_valid),
-                f2_hz=f2_hz.where(pseudo_valid),
+            segment_id = pd.Series(0, index=g.index)
+
+        carrier_raw = carrier_phase_tec(
+            phi1_cyc=phi1.where(carrier_valid),
+            phi2_cyc=phi2.where(carrier_valid),
+            f1_hz=f1_hz.where(carrier_valid),
+            f2_hz=f2_hz.where(carrier_valid),
+        )
+        pseudo_raw = pseudorange_tec(
+            P1_m=rng1.where(pseudo_valid),
+            P2_m=rng2.where(pseudo_valid),
+            f1_hz=f1_hz.where(pseudo_valid),
+            f2_hz=f2_hz.where(pseudo_valid),
+        )
+
+        carrier = pd.Series(np.nan, index=g.index, dtype=float)
+        pseudo = pd.Series(np.nan, index=g.index, dtype=float)
+
+        segment_groups = segment_id.groupby(segment_id, sort=False).groups
+        for segment_index in segment_groups.values():
+            segment_index = pd.Index(segment_index)
+
+            carrier_segment, _, _ = repair_discontinuities_pos(
+                carrier_raw.loc[segment_index],
+                fs=fs,
+                threshold=1,
+                svid=key,
+                verbose=True,
+            )
+            pseudo_segment, _, _ = repair_discontinuities_pos(
+                pseudo_raw.loc[segment_index],
+                fs=fs,
+                threshold=1,
+                svid=key,
+                verbose=False,
             )
 
-            pseudo, _, n_slip_pseudo = repair_discontinuities_pos(
-                pseudo, fs=fs, threshold=1, svid=key, verbose=False
-            )
+            common_valid = carrier_segment.notna() & pseudo_segment.notna()
+            if common_valid.any():
+                carrier_median = carrier_segment.loc[common_valid].median()
+                pseudo_median = pseudo_segment.loc[common_valid].median()
+                carrier_segment = carrier_segment + (
+                    pseudo_median - carrier_median
+                )
+            else:
+                carrier_segment[:] = np.nan
 
-
+            carrier.loc[segment_index] = carrier_segment.to_numpy()
+            pseudo.loc[segment_index] = pseudo_segment.to_numpy()
 
         g[f"tec_cph{pair}"] = carrier
         g[f"tec_rng{pair}"] = pseudo
 
         return g
-    out = (
-        pd.concat(
-            [_per_prn(key, g) for key, g in df.groupby("prn", sort=False)], ignore_index=True
-        )
+    out = pd.concat(
+        [_per_prn(key, g) for key, g in df.groupby("prn", sort=False)]
     )
 
-    return out
+    return out.sort_index(kind="stable").reset_index(drop=True)
 
 def compute_s4(snr):
     snr = snr.dropna()

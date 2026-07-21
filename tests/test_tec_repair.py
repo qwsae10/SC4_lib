@@ -57,3 +57,55 @@ def test_zero_pseudorange_is_treated_as_missing():
     result = add_tec_columns(frame, pair="12", fs=1)
 
     assert result["tec_rng12"].isna().all()
+    assert result["tec_cph12"].isna().all()
+
+
+def test_carrier_tec_median_is_leveled_to_pseudorange_by_time_segment():
+    first_segment = pd.date_range("2024-01-01 00:00:00", periods=3, freq="s")
+    second_segment = pd.date_range("2024-01-01 00:10:00", periods=3, freq="s")
+    frame = pd.DataFrame(
+        {
+            "datetime": first_segment.append(second_segment),
+            "prn": ["G15"] * 6,
+            "cph1": [1_000.0] * 3 + [2_000.0] * 3,
+            "cph2": [900.0] * 3 + [1_800.0] * 3,
+            "rng1": [20_000_000.0] * 6,
+            "rng2": [20_000_010.0] * 3 + [20_000_100.0] * 3,
+            "freq_1": [1575.42] * 6,
+            "freq_2": [1227.60] * 6,
+        }
+    )
+
+    result = add_tec_columns(frame, pair="12", fs=1, max_gap="5min")
+    segment = result["datetime"].diff().gt(pd.Timedelta("5min")).cumsum()
+
+    for _, values in result.groupby(segment):
+        assert np.isclose(
+            values["tec_cph12"].median(),
+            values["tec_rng12"].median(),
+        )
+
+
+def test_carrier_data_outage_over_five_minutes_starts_new_segment():
+    frame = pd.DataFrame(
+        {
+            "datetime": pd.date_range(
+                "2024-01-01 00:00:00", periods=10, freq="min"
+            ),
+            "prn": ["G15"] * 10,
+            "cph1": [1_000.0, 1_000.0] + [np.nan] * 6 + [2_000.0, 2_000.0],
+            "cph2": [900.0, 900.0] + [np.nan] * 6 + [1_800.0, 1_800.0],
+            "rng1": [20_000_000.0] * 10,
+            "rng2": [20_000_010.0] * 8 + [20_000_100.0] * 2,
+            "freq_1": [1575.42] * 10,
+            "freq_2": [1227.60] * 10,
+        }
+    )
+
+    result = add_tec_columns(frame, pair="12", fs=1, max_gap="5min")
+
+    for rows in ([0, 1], [8, 9]):
+        assert np.isclose(
+            result.loc[rows, "tec_cph12"].median(),
+            result.loc[rows, "tec_rng12"].median(),
+        )

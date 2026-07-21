@@ -80,7 +80,7 @@ def process(flist, verbose=False,mode='both'):
                 print(f"Processing {fname}...")
 
             ext = os.path.splitext(str(fname))[1].lower()
-
+            
             # skip conversion if already parquet
             if ext in [".pq", ".parquet"]:
                 pq_fname = fname
