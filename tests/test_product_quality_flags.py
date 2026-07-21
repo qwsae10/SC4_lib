@@ -63,3 +63,41 @@ def test_add_products_creates_separate_sigma_phi_and_s4_quality_flags(monkeypatc
                                "s4_quality_flag_1"] == 0
 
     assert "quality_1" not in result.columns
+
+
+def test_channel_2_edge_gap_mask_sets_channel_2_sigma_phi_flag(monkeypatch):
+    n_rows = 600
+    frame = pd.DataFrame(
+        {
+            "prn": "G01",
+            "minbin": pd.Timestamp("2024-01-01 00:00"),
+            "detrended_noclk_cph1": np.ones(n_rows),
+            "detrended_noclk_cph2": np.ones(n_rows),
+            "edgegap_mask_cph1": np.zeros(n_rows, dtype=bool),
+            "edgegap_mask_cph2": np.r_[
+                True, np.zeros(n_rows - 1, dtype=bool)
+            ],
+        }
+    )
+
+    monkeypatch.setattr(compute, "temp_formating", lambda df: df.copy())
+    monkeypatch.setattr(compute, "process_phases", lambda df: df)
+    monkeypatch.setattr(compute, "detect_sampling_rate", lambda df: 10.0)
+
+    result = compute.add_products(frame).iloc[0]
+
+    assert result["sigma_phi_quality_flag_1"] == 0
+    assert result["sigma_phi_quality_flag_2"] == 1
+
+
+def test_missing_channel_edge_gap_mask_fails_closed():
+    products = pd.DataFrame(
+        {
+            "prn": ["G01"],
+            "n_2": [600],
+        }
+    )
+
+    result = compute._add_quality_flags(products, fs=10.0)
+
+    assert result.loc[0, "sigma_phi_quality_flag_2"] == 1

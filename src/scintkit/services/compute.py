@@ -179,7 +179,11 @@ def _add_quality_flags(products, fs):
             if edge_gap_col in products.columns:
                 has_edge_gap = products[edge_gap_col].astype(bool)
             else:
-                has_edge_gap = pd.Series(False, index=products.index)
+                # The phase product is not trustworthy if its edge/gap mask
+                # was not propagated from phase detrending. Treat a missing
+                # per-frequency mask as bad instead of silently assuming that
+                # the channel contains no edge or gap contamination.
+                has_edge_gap = pd.Series(True, index=products.index)
 
             sigma_phi_bad = (
                 has_edge_gap
