@@ -2,7 +2,7 @@ from scintkit.pipelines.auto import process
 
 import glob
 outputs = process(
-    glob.glob("/home/dal674840/scratch/20241010/scintpi3_20241010_*.bin.zip"),
+    "/Users/dal674840/Downloads/20241010_parquet/20241010_lvl0_day.parquet",
     verbose=True,
     mode="both"
 )
