@@ -2,7 +2,7 @@ from pathlib import Path
 import pandas as pd
 
 # Folder containing parquet files
-data_dir = Path("/home/dal674840/scratch/20241010_parquet")
+data_dir = Path("/home/dal674840/scratch/20241010/20241010_parquet")
 
 # Read all files for the station
 files = sorted(data_dir.glob("*19.2235E_34.4244S*_lvl0.pq"))
@@ -30,7 +30,7 @@ day_df = day_df.sort_values("datetime").reset_index(drop=True)
 # Optional: remove duplicate rows
 day_df = day_df.drop_duplicates()
 
-output_file = data_dir / "20241010_lvl0_day.parquet"
+output_file = data_dir / "scintpi3_20241010_day_19.2235E_34.4244S_lvl0.pq"
 
 day_df.to_parquet(
     output_file,
