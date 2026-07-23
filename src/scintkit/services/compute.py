@@ -200,7 +200,7 @@ def _add_quality_flags(products, fs):
     return products.drop(columns=internal_columns, errors="ignore")
 
 
-def add_products(df,verbose=False):
+def add_products(df,verbose=False,fs=None):
     """
     This function takes a full-rate dataframe (fs=20 or 10 Hz) at and computes various products:
     - tec12 and tec13: differences between detrended phases to estimate TEC (WIP)
@@ -220,8 +220,8 @@ def add_products(df,verbose=False):
     if verbose:
         print("Processing phases...")   
     df = process_phases(df)
-
-    fs=detect_sampling_rate(df)
+    if not(fs):
+        fs=detect_sampling_rate(df)
     
     if verbose:
         print("Computing TEC...")
