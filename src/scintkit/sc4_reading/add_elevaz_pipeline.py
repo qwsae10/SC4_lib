@@ -33,10 +33,6 @@ def run_sp3_pipeline(
 
         try:
 
-            # --------------------------------------------------
-            # Read only the timestamp column
-            # --------------------------------------------------
-
             df = pd.read_parquet(
                 parquet_file,
                 columns=["timestamp"]
@@ -46,10 +42,6 @@ def run_sp3_pipeline(
 
             year = first_time.year
             doy = first_time.dayofyear
-
-            # --------------------------------------------------
-            # Construct SP3 filename
-            # --------------------------------------------------
 
             sp3_file = (
                 sp3_dir /
@@ -62,10 +54,6 @@ def run_sp3_pipeline(
                 )
 
             print(f"Using SP3 : {sp3_file.name}")
-
-            # --------------------------------------------------
-            # Merge
-            # --------------------------------------------------
 
             unified_df, outfile = sp3_merge_lvl3(
                 parquet_file=parquet_file,

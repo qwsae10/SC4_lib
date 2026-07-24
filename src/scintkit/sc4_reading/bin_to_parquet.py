@@ -62,10 +62,6 @@ def run_pipeline(
 
         try:
 
-            ############################################################
-            # STEP 1
-            # Binary -> TXT
-            ############################################################
 
             txt_file = binary_to_clean_txt(
                 binary_file,
@@ -77,20 +73,12 @@ def run_pipeline(
             print(f"TXT created:")
             print(txt_file)
 
-            ############################################################
-            # STEP 2
-            # TXT -> Measurement parquet
-            ############################################################
 
             mearem_df, mearem_file = reading__measurements_file(
                 str(txt_file)
             )
 
             mearem_file = Path(mearem_file)
-
-            ############################################################
-            # Move parquet to mearem directory
-            ############################################################
 
             destination = mearem_dir / mearem_file.name
 
@@ -105,11 +93,6 @@ def run_pipeline(
 
             print(f"Measurement parquet:")
             print(mearem_file)
-
-            ############################################################
-            # STEP 3
-            # Measurement parquet -> Level0 parquet
-            ############################################################
 
             lvl0_df, lvl0_file = pq_reshaping_lvl0(
                 mearem_file,

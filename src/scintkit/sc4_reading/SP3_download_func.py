@@ -38,9 +38,6 @@ def download_sp3_files(
         Email used for anonymous CDDIS login.
     """
 
-    # --------------------------------------------------
-    # Parse dates
-    # --------------------------------------------------
     if isinstance(start_date, str):
         start_date = datetime.strptime(start_date, "%Y-%m-%d")
 
@@ -53,9 +50,6 @@ def download_sp3_files(
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # --------------------------------------------------
-    # FTP Login
-    # --------------------------------------------------
     ftps = FTP_TLS("gdc.cddis.eosdis.nasa.gov")
     ftps.login(user="anonymous", passwd=email)
     ftps.prot_p()
