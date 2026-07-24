@@ -28,6 +28,7 @@ def pseudorange_tec(P1_m, P2_m, f1_hz, f2_hz):
 
     return tec_factor * (P2_m - P1_m)/1e16
 
+
 def add_tec_columns(df, pair="13", fs=None, max_gap="5min"):
     """Add carrier-phase and pseudorange TEC for a frequency pair.
 
@@ -40,6 +41,11 @@ def add_tec_columns(df, pair="13", fs=None, max_gap="5min"):
     """
     df = df.reset_index(drop=True).copy()
     gap_threshold = pd.to_timedelta(max_gap)
+
+def add_tec_columns(df, pair="13", fs=None):
+    df = df.reset_index(drop=True).copy() 
+
+
 
     def _per_prn(key, g):
         # Phase repair and gap detection both depend on chronological order.
@@ -70,6 +76,7 @@ def add_tec_columns(df, pair="13", fs=None, max_gap="5min"):
             & f2_hz.notna()
             & f1_hz.ne(f2_hz)
         )
+
         pseudo_valid = (
             rng1.notna()
             & rng2.notna()
@@ -128,6 +135,46 @@ def add_tec_columns(df, pair="13", fs=None, max_gap="5min"):
                 threshold=1,
                 svid=key,
                 verbose=False,
+
+        # if carrier inputs invalid
+        if not carrier_valid.any():
+            carrier = np.full(len(g), np.nan)
+            n_slip_carrier = 0
+        else:
+            carrier = carrier_phase_tec(
+                phi1_cyc=phi1.where(carrier_valid),
+                phi2_cyc=phi2.where(carrier_valid),
+                f1_hz=f1_hz.where(carrier_valid),
+                f2_hz=f2_hz.where(carrier_valid),
+            )
+
+            carrier, _, n_slip_carrier = repair_discontinuities_pos(
+                carrier, fs=fs, threshold=1, svid=key, verbose=True
+            )
+
+            carrier = carrier - np.nanmean(carrier)
+
+        # if pseudorange inputs invalid
+        pseudo_valid = (
+            rng1.notna()
+            & rng2.notna()
+            & f1_hz.notna()
+            & f2_hz.notna()
+            & f1_hz.ne(f2_hz)
+        )
+        if not pseudo_valid.any():
+            pseudo = np.full(len(g), np.nan)
+            n_slip_pseudo = 0
+        else:
+            pseudo = pseudorange_tec(
+                P1_m=rng1.where(pseudo_valid),
+                P2_m=rng2.where(pseudo_valid),
+                f1_hz=f1_hz.where(pseudo_valid),
+                f2_hz=f2_hz.where(pseudo_valid),
+            )
+
+            pseudo, _, n_slip_pseudo = repair_discontinuities_pos(
+                pseudo, fs=fs, threshold=1, svid=key, verbose=False
             )
 
             common_valid = carrier_segment.notna() & pseudo_segment.notna()
@@ -228,6 +275,7 @@ def _add_quality_flags(products, fs):
                 # per-frequency mask as bad instead of silently assuming that
                 # the channel contains no edge or gap contamination.
                 has_edge_gap = pd.Series(True, index=products.index)
+                has_edge_gap = pd.Series(False, index=products.index)
 
             sigma_phi_bad = (
                 has_edge_gap
@@ -249,6 +297,8 @@ def _add_quality_flags(products, fs):
 
 
 def add_products(df,verbose=False):
+
+def add_products(df,verbose=False,fs=None):
     """
     This function takes a full-rate dataframe (fs=20 or 10 Hz) at and computes various products:
     - tec12 and tec13: differences between detrended phases to estimate TEC (WIP)
@@ -268,8 +318,8 @@ def add_products(df,verbose=False):
     if verbose:
         print("Processing phases...")   
     df = process_phases(df)
-
-    fs=detect_sampling_rate(df)
+    if not(fs):
+        fs=detect_sampling_rate(df)
     
     if verbose:
         print("Computing TEC...")

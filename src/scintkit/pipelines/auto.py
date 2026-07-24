@@ -29,7 +29,7 @@ def get_type(f):
     return None
 
 
-def process(flist, verbose=False,mode='both'):
+def process(flist, verbose=False,mode='both',fs=None):
     """
     Wrapper to run full pipeline on list of files and make high level scintillation index product files (lvl3)
     Inputs:
@@ -90,7 +90,7 @@ def process(flist, verbose=False,mode='both'):
             if verbose:
                 print(f"Reading and formatting parquet file: {pq_fname}...")
             df = pd.read_parquet(pq_fname)
-            df = add_products(df, verbose=verbose)
+            df = add_products(df, verbose=verbose,fs=fs)
             
 
             if mode=='lvl2':
