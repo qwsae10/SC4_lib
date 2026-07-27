@@ -13,12 +13,6 @@ from scintkit.preprocessing.format import temp_formating
 import numpy as np
 import pdb
 
-#Added by Priya 
-
-def mem(stage):
-    p = psutil.Process(os.getpid())
-    print(f"\n[{stage}]")
-    print(f"Memory (RSS): {p.memory_info().rss / 1024**3:.2f} GB") #end
 
 def carrier_phase_tec(phi1_cyc, phi2_cyc, f1_hz, f2_hz):
     c = 299792458  # m/s
@@ -108,95 +102,6 @@ def add_tec_columns(df, pair="13", fs=None):
 
     return out
 
-#Added by Priya 
-
-'''def add_tec_columns(df, pair="13", fs=None):
-
-    mem("Start add_tec_columns")
-
-    # Create output columns if they don't already exist
-    df[f"tec_cph{pair}"] = np.nan
-    df[f"tec_rng{pair}"] = np.nan
-
-    N1 = pair[0]
-    N2 = pair[1]
-
-    for key, idx in df.groupby("prn", sort=False).groups.items():
-
-        g = df.loc[idx]
-
-        phi1 = g[f"cph{N1}"]
-        phi2 = g[f"cph{N2}"]
-        rng1 = g[f"rng{N1}"]
-        rng2 = g[f"rng{N2}"]
-
-        # ----------------------------
-        # Carrier TEC
-        # ----------------------------
-        if phi1.isna().all() or phi2.isna().all():
-
-            carrier = np.full(len(g), np.nan)
-            n_slip_carrier = 0
-
-        else:
-
-            f1_hz = g[f"freq_{N1}"] * 1e6
-            f2_hz = g[f"freq_{N2}"] * 1e6
-
-            carrier = carrier_phase_tec(
-                phi1_cyc=phi1,
-                phi2_cyc=phi2,
-                f1_hz=f1_hz,
-                f2_hz=f2_hz,
-            )
-
-            carrier, _, n_slip_carrier = repair_discontinuities_pos(
-                carrier,
-                fs=fs,
-                threshold=1,
-                svid=key,
-                verbose=True,
-            )
-
-            # Same behaviour as original code
-            carrier = carrier - np.nanmean(carrier)
-
-        # ----------------------------
-        # Pseudorange TEC
-        # ----------------------------
-        if rng1.isna().all() or rng2.isna().all():
-
-            pseudo = np.full(len(g), np.nan)
-            n_slip_pseudo = 0
-
-        else:
-
-            f1_hz = g[f"freq_{N1}"] * 1e6
-            f2_hz = g[f"freq_{N2}"] * 1e6
-
-            pseudo = pseudorange_tec(
-                P1_m=rng1,
-                P2_m=rng2,
-                f1_hz=f1_hz,
-                f2_hz=f2_hz,
-            )
-
-            pseudo, _, n_slip_pseudo = repair_discontinuities_pos(
-                pseudo,
-                fs=fs,
-                threshold=1,
-                svid=key,
-                verbose=False,
-            )
-
-        # ---------------------------------------
-        # Write results directly into dataframe
-        # ---------------------------------------
-        df.loc[idx, f"tec_cph{pair}"] = carrier
-        df.loc[idx, f"tec_rng{pair}"] = pseudo
-
-    return df'''
-
 
 def compute_s4(snr):
     snr = snr.dropna()
@@ -255,24 +160,20 @@ def add_products(df,verbose=False):
     The function groups the data by PRN and 1-minute bins to compute these products, and then merges the results back to the original dataframe in the same time bins.
     """
 
-    mem("Start add_products")
 
     if verbose:
         print("Ensuring format...")
-    print("A")    
+   
     df=temp_formating(df)
-    print("B")
-    mem("After temp_formating")
+
     if verbose:
         print("Processing phases...")
-    print("C")      
-    mem("Before process_phases") 
+     
     df = process_phases(df)
-    print("D")
-    mem("After process_phases")
+  
 
     fs=detect_sampling_rate(df)
-    mem("After detect_sampling_rate")
+
     
     if verbose:
         print("Computing TEC...")
@@ -326,22 +227,5 @@ def add_products(df,verbose=False):
     df = df.merge(products, on=group_cols, how="left")
 
     return df
-    #Added by Priya
-
-    '''if verbose:
-       print("Computing minute products...")
-
-    groups = df.groupby(group_cols, sort=False)
-
-    for new_col, (src_col, func) in agg_dict.items():
-
-        print(f"Computing {new_col}")
-
-        df[new_col] = groups[src_col].transform(func)
-
-        mem(new_col)
-
-    return df'''
-    mem("After add_products") 
 
 # %%
