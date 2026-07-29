@@ -128,7 +128,7 @@ def add_tec_columns(df, pair="13", fs=None, max_gap="5min"):
                 fs=fs,
                 threshold=1,
                 svid=key,
-                verbose=False,)
+                verbose=False)
 
         # if carrier inputs invalid
         if not carrier_valid.any():
