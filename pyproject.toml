@@ -32,7 +32,7 @@ dev = [
 packages = [
   "scintkit",
   "scintkit.data",
-  "scintkit.email",
+  "scintkit.email_updates",
   "scintkit.pipelines",
   "scintkit.preprocessing",
   "scintkit.reading",

@@ -1,7 +1,7 @@
 import pandas as pd
 
 from scintkit.data import load_station_codes
-from scintkit.email import core
+from scintkit.email_updates import core
 
 
 def test_shared_station_registry_is_loadable():

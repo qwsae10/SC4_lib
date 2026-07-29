@@ -1,6 +1,6 @@
-# ScintKit Email Module 📡
+# ScintKit Email Updates Module 📡
 
-`scintkit.email` is a submodule of the `scintkit` package that automatically scans, plots, and reports the data availability of ScintPi (Scintillation Pi) ionospheric monitoring stations. It supports legacy ScintPi 2/3 formats as well as the newer ScintPi 4.
+`scintkit.email_updates` is a submodule of the `scintkit` package that automatically scans, plots, and reports the data availability of ScintPi (Scintillation Pi) ionospheric monitoring stations. It supports legacy ScintPi 2/3 formats as well as the newer ScintPi 4.
 
 ## Directory Structure
 
@@ -10,7 +10,7 @@ src/scintkit/
 ├── data/
 │   ├── __init__.py
 │   └── station_scintpi_codes.csv
-├── email/
+├── email_updates/
 │   ├── __init__.py
 │   ├── core.py
 │   ├── plotting.py
@@ -67,7 +67,7 @@ set SMTP_SENDER=ScintPi Bot <scintpi-bot@example.com>
 Once installed and your environment variables are set, run the pipeline:
 
 ```bash
-python -m scintkit.email.run_pipeline
+python -m scintkit.email_updates.run_pipeline
 ```
 
 ### Importing in your own code
@@ -78,7 +78,7 @@ and loaded automatically, so installed code does not depend on a repository
 path:
 
 ```python
-from scintkit.email import load_targets, scan_legacy_files, generate_availability_plot
+from scintkit.email_updates import load_targets, scan_legacy_files, generate_availability_plot
 
 # Loads the bundled CSV automatically
 targets = load_targets()
@@ -87,7 +87,7 @@ targets = load_targets()
 targets = load_targets("/path/to/custom_stations.csv")
 ```
 
-Code outside the email module can load the shared station table directly:
+Code outside the email updates module can load the shared station table directly:
 
 ```python
 from scintkit.data import load_station_codes
@@ -110,7 +110,7 @@ stations = load_station_codes()
 
 ```python
 import pandas as pd
-from scintkit.email import (
+from scintkit.email_updates import (
     load_targets,
     scan_legacy_files,
     scan_sc4_files,

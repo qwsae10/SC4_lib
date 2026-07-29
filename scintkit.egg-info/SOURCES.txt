@@ -6,12 +6,11 @@ scintkit.egg-info/dependency_links.txt
 scintkit.egg-info/requires.txt
 scintkit.egg-info/top_level.txt
 src/scintkit/__init__.py
-src/scintkit/email/__init__.py
-src/scintkit/email/core.py
-src/scintkit/email/mailer.py
-src/scintkit/email/plotting.py
-src/scintkit/email/run_pipeline.py
-src/scintkit/email/station_scintpi_codes_fsr.csv
+src/scintkit/email_updates/__init__.py
+src/scintkit/email_updates/core.py
+src/scintkit/email_updates/mailer.py
+src/scintkit/email_updates/plotting.py
+src/scintkit/email_updates/run_pipeline.py
 src/scintkit/pipelines/__init__ copy.py
 src/scintkit/pipelines/__init__.py
 src/scintkit/pipelines/auto.py

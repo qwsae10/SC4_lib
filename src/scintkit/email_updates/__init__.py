@@ -1,4 +1,4 @@
-# src/scintkit/email/__init__.py
+# src/scintkit/email_updates/__init__.py
 """ScintPi email reporting: availability scanning, plotting, and emailing."""
 
 from .core import load_targets, scan_legacy_files, scan_sc4_files, checklvl3datamissing

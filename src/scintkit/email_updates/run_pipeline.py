@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import pandas as pd
-from scintkit.email import (
+from scintkit.email_updates import (
     load_targets,
     scan_legacy_files,
     scan_sc4_files,
