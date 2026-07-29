@@ -29,7 +29,6 @@ def pseudorange_tec(P1_m, P2_m, f1_hz, f2_hz):
 
 def add_tec_columns(df, pair="13", fs=None, max_gap="5min"):
     """Add carrier-phase and pseudorange TEC for a frequency pair.
-
     Each PRN is split into continuous time segments. A time gap strictly
     greater than ``max_gap`` starts a new segment. Carrier and pseudorange TEC
     are repaired independently within each segment, then the carrier TEC is
@@ -39,7 +38,6 @@ def add_tec_columns(df, pair="13", fs=None, max_gap="5min"):
     """
     df = df.reset_index(drop=True).copy()
     gap_threshold = pd.to_timedelta(max_gap)
-
 
     def _per_prn(key, g):
         # Phase repair and gap detection both depend on chronological order.
