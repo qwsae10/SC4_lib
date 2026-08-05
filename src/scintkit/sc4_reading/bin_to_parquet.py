@@ -5,6 +5,7 @@ import traceback
 from sc4_reading_func import binary_to_clean_txt
 from sc4_s02_txtF2parquet import reading__measurements_file
 from parquet_reshaping_lvl0 import pq_reshaping_lvl0
+import time
 
 
 def run_pipeline(
@@ -59,6 +60,15 @@ def run_pipeline(
 
         print("=" * 80)
         print(f"[{i}/{len(binary_files)}] {binary_file.name}")
+        
+        lvl0_file = lvl0_dir / f"{binary_file.name}_mearem_noelev_lvl0.parquet"
+
+        if lvl0_file.exists():
+            print(f"Level0 already exists:")
+            print(lvl0_file)
+            print("Skipping...")
+            successful += 1
+            continue
 
         try:
 
@@ -128,10 +138,5 @@ def run_pipeline(
         for file in failed:
 
             print(file)
-
-'''run_pipeline(
-    binary_dir="/home/dal674840/scratch/binary_trial",
-    txt_dir="/home/dal674840/scratch/binary_trial/txt_files",
-    mearem_dir="/home/dal674840/scratch/binary_trial/mearem_parquet",
-    lvl0_dir="/home/dal674840/scratch/binary_trial/lvl0_parquet",
-)  '''        
+ 
+   

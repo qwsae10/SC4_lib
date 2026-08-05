@@ -6,6 +6,7 @@ import os
 import sys
 #import scipy.interpolate
 import pandas as pd
+from pathlib import Path
 
 print("checking libs")
 
@@ -15,14 +16,17 @@ def reading__measurements_file(files,redo=False): #converts text to data frame
     if type(files)==str:
         files=[files]
 
-    letters=[ f[-13:-10] for f in files]
-    namestr=''.join(letters)
-    df_output=files[0][:-15]+namestr+'.parquet'
+    txt_file = Path(files[0])
+
+    name = txt_file.name
+    name = name.replace("__measurements.txt", "__mearem.parquet")
+
+    df_output = txt_file.with_name(name)
 
     if os.path.exists(df_output) and not(redo):
         print(df_output+' already exists, using it')
         return pd.read_parquet(df_output), df_output
-    print(df_output+' doesnt exist, creating new file')
+    print(f"{df_output} doesn't exist, creating new file")
    # cols=[1,2,3,4,7,8,9] #columns
     cols=[0,1,2,3,5,6,8] #columns \nt
     #293400.000,2306,G10,GPS_L2C,Main,20928167.858000,85697380.178385,-1114.756836,45.437500,60
@@ -58,3 +62,4 @@ for daystring in np.arange(53,55+1):
             UTD01 = pd.concat(map(reading__measurements_file, lvl0_files))
         except:
             continue
+
