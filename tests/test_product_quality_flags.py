@@ -62,6 +62,12 @@ def test_add_products_creates_separate_sigma_phi_and_s4_quality_flags(monkeypatc
     assert minute_products.loc[("R03", pd.Timestamp("2024-01-01 00:00")),
                                "s4_quality_flag_1"] == 0
 
+    assert minute_products.loc[("G01", pd.Timestamp("2024-01-01 00:00")),
+                               "n_sigphi_1"] == 590
+    assert minute_products.loc[("G01", pd.Timestamp("2024-01-01 00:00")),
+                               "n_s4_1"] == 480
+    assert "n_1" not in result.columns
+    assert "_s4_sample_count_1" not in result.columns
     assert "quality_1" not in result.columns
 
 
@@ -94,7 +100,7 @@ def test_missing_channel_edge_gap_mask_fails_closed():
     products = pd.DataFrame(
         {
             "prn": ["G01"],
-            "n_2": [600],
+            "n_sigphi_2": [600],
         }
     )
 

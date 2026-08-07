@@ -43,7 +43,8 @@ def process(flist, verbose=False,mode='both',fs=50):
 
     - tec12 and tec13: differences between detrended phases to estimate TEC (WIP)
     - sigma_phi_1, sigma_phi_2, sigma_phi_3: standard deviation of detrended phases with clock noise removed, for each frequency
-    - n_1, n_2, n_3: number of valid samples for each frequency
+    - n_sigphi_1, n_sigphi_2, n_sigphi_3: number of valid detrended phase samples used for sigma-phi
+    - n_s4_1, n_s4_2, n_s4_3: number of valid SNR samples used for S4
     - n_cycleslip_1, n_cycleslip_2, n_cycleslip_3: number of detected cycle slips for each phase
     - sigma_phi_quality_flag_1/2/3: binary sigma-phi quality flags; 0 is good and 1 marks an edge/gap, too many dropped samples, or GLONASS
     - s4_quality_flag_1/2/3: binary S4 quality flags; 0 is good and 1 marks fewer than 80% of the expected samples

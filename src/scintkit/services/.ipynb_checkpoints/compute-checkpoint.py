@@ -294,9 +294,9 @@ def _add_quality_flags(products, fs):
 
     internal_columns = []
     for i in ("1", "2", "3"):
-        phase_count_col = f"n_{i}"
+        phase_count_col = f"n_sigphi_{i}"
         edge_gap_col = f"_sigma_phi_edge_gap_{i}"
-        s4_count_col = f"_s4_sample_count_{i}"
+        s4_count_col = f"n_s4_{i}"
 
         if phase_count_col in products.columns:
             if edge_gap_col in products.columns:
@@ -307,12 +307,11 @@ def _add_quality_flags(products, fs):
                 # per-frequency mask as bad instead of silently assuming that
                 # the channel contains no edge or gap contamination.
                 has_edge_gap = pd.Series(True, index=products.index)
-                has_edge_gap = pd.Series(False, index=products.index)
 
             sigma_phi_bad = (
                 has_edge_gap
                 | products[phase_count_col].lt(sigma_phi_min_samples)
-                #| is_glonass #maybe add this back in later if we want to filter out GLONASS
+                | is_glonass
             )
             products[f"sigma_phi_quality_flag_{i}"] = sigma_phi_bad.astype(
                 np.int8
@@ -323,7 +322,7 @@ def _add_quality_flags(products, fs):
                 s4_min_samples
             ).astype(np.int8)
 
-        internal_columns.extend([edge_gap_col, s4_count_col])
+        internal_columns.append(edge_gap_col)
 
     return products.drop(columns=internal_columns, errors="ignore")
 
@@ -333,7 +332,8 @@ def add_products(df,verbose=False,fs=None):
     This function takes a full-rate dataframe (fs=20 or 10 Hz) at and computes various products:
     - tec12 and tec13: differences between detrended phases to estimate TEC (WIP)
     - sigma_phi_1, sigma_phi_2, sigma_phi_3: standard deviation of detrended phases with clock noise removed, for each frequency
-    - n_1, n_2, n_3: number of valid samples for each frequency
+    - n_sigphi_1, n_sigphi_2, n_sigphi_3: number of valid detrended phase samples used for sigma-phi
+    - n_s4_1, n_s4_2, n_s4_3: number of valid SNR samples used for S4
     - n_cycleslip_1, n_cycleslip_2, n_cycleslip_3: number of detected cycle slips for each phase
     - sigma_phi_quality_flag_1/2/3: binary sigma-phi quality flags; 0 is good and 1 marks an edge/gap, too many dropped samples, or GLONASS
     - s4_quality_flag_1/2/3: binary S4 quality flags; 0 is good and 1 marks fewer than 80% of the expected samples
@@ -379,7 +379,10 @@ def add_products(df,verbose=False,fs=None):
 
         if detrended_noclk_col in df.columns:
             agg_dict[f"sigma_phi_{i}"] = (detrended_noclk_col, compute_sigma_phi)
-            agg_dict[f"n_{i}"] = (detrended_noclk_col, compute_n_samples)
+            agg_dict[f"n_sigphi_{i}"] = (
+                detrended_noclk_col,
+                compute_n_samples,
+            )
 
         if cycleslip_col in df.columns:
             agg_dict[f"n_cycleslip_{i}"] = (cycleslip_col, compute_n_cycleslips)
@@ -399,7 +402,7 @@ def add_products(df,verbose=False,fs=None):
                 snr_col,
                 lambda x, fs=fs: compute_tau(x, fs)
             )
-            agg_dict[f"_s4_sample_count_{i}"] = (
+            agg_dict[f"n_s4_{i}"] = (
                 snr_col,
                 compute_n_samples,
             )
