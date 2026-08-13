@@ -1,17 +1,31 @@
 #!/bin/bash
 #SBATCH --job-name=scintpi_ml_2024
-#SBATCH --output=/home/igw180000/scratch/scintpi_ml_2024_%j.out
-#SBATCH --error=/home/igw180000/scratch/scintpi_ml_2024_%j.err
+# Logs are redirected after startup into ~/features_run_<array-job-id>/.
+#SBATCH --output=/dev/null
+#SBATCH --error=/dev/null
 #SBATCH --partition=rodrigues,cpu-preempt
 #SBATCH --exclude=c-05-08
+# Four simultaneous array tasks, each on its own machine.
+#SBATCH --array=0-3%4
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
+# Prevent two array tasks from sharing the same machine.
+#SBATCH --exclusive
 # Use all memory available on the assigned node. Each worker loads one raw file.
 #SBATCH --mem=0
 #SBATCH --time=48:00:00
 
 set -euo pipefail
+
+# Slurm cannot create a job-ID-named directory while opening #SBATCH logs, so
+# redirect immediately after the task starts and the array job ID is known.
+RUN_ID="${SLURM_ARRAY_JOB_ID:-$SLURM_JOB_ID}"
+TASK_ID="${SLURM_ARRAY_TASK_ID:-0}"
+RUN_DIR="$HOME/features_run_${RUN_ID}"
+mkdir -p "$RUN_DIR"
+exec >"$RUN_DIR/ml_features_${RUN_ID}_${TASK_ID}.out" \
+     2>"$RUN_DIR/ml_features_${RUN_ID}_${TASK_ID}.err"
 
 unset PYTHONHOME
 unset PYTHONPATH
@@ -44,6 +58,8 @@ fi
 export PYTHONPATH="$PROJECT_ROOT/src"
 
 echo "Job ID: $SLURM_JOB_ID"
+echo "Array job ID: $RUN_ID"
+echo "Array task: $TASK_ID/${SLURM_ARRAY_TASK_COUNT:-1}"
 echo "Node: $(hostname)"
 echo "Workers/CPUs: $SLURM_CPUS_PER_TASK"
 echo "Allocated memory: ${SLURM_MEM_PER_NODE:-all node memory}"
@@ -55,6 +71,8 @@ python -u "$SCRIPT" \
     --output-dir /titan/frodrigues/scintpi_storage/ml_features \
     --year 2024 \
     --workers "$SLURM_CPUS_PER_TASK" \
+    --shard-index "$SLURM_ARRAY_TASK_ID" \
+    --shard-count "$SLURM_ARRAY_TASK_COUNT" \
     --n-thresh 1190 \
     --s4-thresh 0.15 \
     --coordinate -7.213 -35.907 \

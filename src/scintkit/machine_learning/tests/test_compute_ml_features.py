@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
 
@@ -10,6 +12,7 @@ from scintkit.machine_learning.batch_ml_features import (
     filename_year,
     output_path_for,
     parse_filename_coordinates,
+    select_file_shard,
 )
 from scintkit.machine_learning.compute_ml_features import (
     DEFAULT_S4_THRESHOLD,
@@ -74,6 +77,22 @@ def test_file_discovery_filters_year_coordinates_and_generated_outputs(
     assert sources == [matched]
     assert output_path_for(matched, output_dir) == generated
     assert error_path_for(generated).name.endswith("_ml_features_err.txt")
+
+
+def test_file_shards_are_disjoint_and_cover_every_whole_file() -> None:
+    sources = [Path(f"source_{number:02d}.pq") for number in range(11)]
+    shards = [
+        select_file_shard(sources, shard_index=index, shard_count=4)
+        for index in range(4)
+    ]
+    assert shards[0] == sources[0::4]
+    assert shards[1] == sources[1::4]
+    assert shards[2] == sources[2::4]
+    assert shards[3] == sources[3::4]
+    assert sorted(path for shard in shards for path in shard) == sources
+    assert sum(len(shard) for shard in shards) == len(
+        {path for shard in shards for path in shard}
+    )
 
 
 def test_default_s4_threshold_is_point_fifteen() -> None:

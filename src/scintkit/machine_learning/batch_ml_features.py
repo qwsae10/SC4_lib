@@ -53,6 +53,8 @@ DEFAULT_INPUT_ROOT = Path("/titan/frodrigues/scintpi_storage")
 DEFAULT_OUTPUT_DIR = DEFAULT_INPUT_ROOT / "ml_features"
 DEFAULT_YEAR = 2024
 DEFAULT_WORKERS = 4
+DEFAULT_SHARD_INDEX = 0
+DEFAULT_SHARD_COUNT = 1
 DEFAULT_PATTERN = "*/*{year}*.pq"
 DEFAULT_FILENAME_COORDINATE_SCALE = 10_000.0
 DEFAULT_COORDINATE_TOLERANCE_DEG = 0.0005
@@ -203,6 +205,24 @@ def output_path_for(source: Path, output_dir: Path) -> Path:
     return output_dir / f"{source.stem}{OUTPUT_SUFFIX}"
 
 
+def select_file_shard(
+    sources: list[Path],
+    *,
+    shard_index: int,
+    shard_count: int,
+) -> list[Path]:
+    """Select one deterministic round-robin shard of whole source files."""
+
+    if shard_count < 1:
+        raise ValueError("shard_count must be at least 1")
+    if not 0 <= shard_index < shard_count:
+        raise ValueError(
+            f"shard_index must be between 0 and {shard_count - 1}; "
+            f"received {shard_index}"
+        )
+    return sources[shard_index::shard_count]
+
+
 def error_path_for(output: Path) -> Path:
     """Return the per-file diagnostic path for one feature output."""
 
@@ -343,6 +363,8 @@ def run_batch(
     year: int,
     coordinates: list[tuple[float, float]],
     workers: int = DEFAULT_WORKERS,
+    shard_index: int = DEFAULT_SHARD_INDEX,
+    shard_count: int = DEFAULT_SHARD_COUNT,
     pattern: str = DEFAULT_PATTERN,
     coordinate_scale: float = DEFAULT_FILENAME_COORDINATE_SCALE,
     coordinate_tolerance_deg: float = DEFAULT_COORDINATE_TOLERANCE_DEG,
@@ -355,7 +377,7 @@ def run_batch(
     if workers < 1:
         raise ValueError("workers must be at least 1")
     output_dir = output_dir.expanduser().resolve()
-    sources = discover_input_files(
+    all_sources = discover_input_files(
         input_root,
         output_dir=output_dir,
         year=year,
@@ -364,15 +386,31 @@ def run_batch(
         coordinate_scale=coordinate_scale,
         coordinate_tolerance_deg=coordinate_tolerance_deg,
     )
-    outputs = {source: output_path_for(source, output_dir) for source in sources}
-    _validate_unique_outputs(outputs)
+    all_outputs = {
+        source: output_path_for(source, output_dir) for source in all_sources
+    }
+    _validate_unique_outputs(all_outputs)
+    sources = select_file_shard(
+        all_sources,
+        shard_index=shard_index,
+        shard_count=shard_count,
+    )
+    outputs = {source: all_outputs[source] for source in sources}
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    print(f"Source files: {len(sources):,}")
+    print(f"Matching source files: {len(all_sources):,}")
+    print(
+        f"File shard: {shard_index + 1}/{shard_count} "
+        f"({len(sources):,} files assigned)"
+    )
     print(f"Workers: {workers}")
     print(f"Year: {year}")
     print(f"Target coordinates (lat, lon): {coordinates}")
     print(f"Output directory: {output_dir}", flush=True)
+
+    if not sources:
+        print("This shard has no files to process.", flush=True)
+        return []
 
     results: list[BatchResult] = []
     if workers == 1:
@@ -445,6 +483,18 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--year", type=int, default=DEFAULT_YEAR)
     parser.add_argument("--workers", type=int, default=DEFAULT_WORKERS)
     parser.add_argument(
+        "--shard-index",
+        type=int,
+        default=DEFAULT_SHARD_INDEX,
+        help="zero-based index of this machine's whole-file shard",
+    )
+    parser.add_argument(
+        "--shard-count",
+        type=int,
+        default=DEFAULT_SHARD_COUNT,
+        help="total number of disjoint whole-file shards",
+    )
+    parser.add_argument(
         "--coordinate",
         dest="coordinates",
         action="append",
@@ -501,9 +551,17 @@ def main(argv: list[str] | None = None) -> int:
             coordinate_scale=arguments.filename_coordinate_scale,
             coordinate_tolerance_deg=arguments.coordinate_tolerance,
         )
+        sources = select_file_shard(
+            sources,
+            shard_index=arguments.shard_index,
+            shard_count=arguments.shard_count,
+        )
         for source in sources:
             print(source)
-        print(f"Matched {len(sources):,} source files")
+        print(
+            f"Shard {arguments.shard_index + 1}/{arguments.shard_count} "
+            f"contains {len(sources):,} source files"
+        )
         return 0
 
     results = run_batch(
@@ -512,6 +570,8 @@ def main(argv: list[str] | None = None) -> int:
         year=arguments.year,
         coordinates=coordinates,
         workers=arguments.workers,
+        shard_index=arguments.shard_index,
+        shard_count=arguments.shard_count,
         pattern=arguments.pattern,
         coordinate_scale=arguments.filename_coordinate_scale,
         coordinate_tolerance_deg=arguments.coordinate_tolerance,
