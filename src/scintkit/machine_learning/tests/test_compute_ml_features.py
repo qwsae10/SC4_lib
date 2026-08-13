@@ -362,3 +362,35 @@ def test_receiver_clock_splits_overlap_unwraps_week_and_deduplicates() -> None:
     assert repaired["datetime"].max().date() == pd.Timestamp("2024-01-21").date()
     assert report.exact_duplicate_receiver_epochs_removed == 1
     assert report.gps_week_rollovers_unwrapped == 1
+    assert not report.sample_order_grid_fallback_used
+
+
+def test_receiver_clock_falls_back_to_sample_order_for_ambiguous_epochs() -> None:
+    timestamp = pd.Timestamp("2024-01-20 20:00:00")
+    rows = []
+    for epoch, (epoch_time, value) in enumerate(
+        [
+            (timestamp, 10.0),
+            (timestamp, 20.0),
+            (timestamp + pd.Timedelta(milliseconds=50), 30.0),
+        ]
+    ):
+        for svid in range(1, 5):
+            rows.append(
+                {
+                    "datetime": epoch_time,
+                    "cons": 0,
+                    "svid": svid,
+                    "snr1": value + svid + epoch / 10,
+                }
+            )
+
+    repaired, report = reconstruct_receiver_clock(pd.DataFrame(rows))
+    epoch_times = (
+        repaired.groupby("_receiver_epoch", sort=True)["datetime"]
+        .first()
+        .sort_index()
+    )
+    assert report.sample_order_grid_fallback_used
+    assert report.receiver_epochs_after_deduplication == 3
+    assert epoch_times.diff().dropna().eq(pd.Timedelta(milliseconds=50)).all()

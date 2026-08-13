@@ -76,6 +76,7 @@ class BatchResult:
     row_count: int
     status: str
     elapsed_seconds: float
+    sample_order_grid_fallback_used: bool = False
     error: str | None = None
 
 
@@ -310,7 +311,7 @@ def process_file_task(
                 elapsed_seconds=perf_counter() - started,
             )
 
-        features, _ = compute_features(
+        features, clock_report = compute_features(
             source,
             n_threshold=n_threshold,
             s4_threshold=s4_threshold,
@@ -329,6 +330,9 @@ def process_file_task(
             row_count=len(features),
             status="written",
             elapsed_seconds=perf_counter() - started,
+            sample_order_grid_fallback_used=bool(
+                clock_report["sample_order_grid_fallback_used"]
+            ),
         )
     except Exception as error:
         _write_error_diagnostic(
@@ -348,10 +352,15 @@ def process_file_task(
 
 
 def _print_result(result: BatchResult) -> None:
+    clock_note = (
+        ", sample-order clock fallback"
+        if result.sample_order_grid_fallback_used
+        else ""
+    )
     print(
         f"[{result.status.upper()}] {result.source.name} -> "
         f"{result.output.name} ({result.row_count:,} rows, "
-        f"{result.elapsed_seconds:.1f} s)",
+        f"{result.elapsed_seconds:.1f} s{clock_note})",
         flush=True,
     )
 

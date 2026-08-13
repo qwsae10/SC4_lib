@@ -447,6 +447,11 @@ def compute_features(
     if verbose:
         print("Reconstructing the in-memory 20 Hz receiver clock")
     frame, clock_report = reconstruct_receiver_clock(raw, sample_rate_hz=FS_HZ)
+    if verbose and clock_report.sample_order_grid_fallback_used:
+        print(
+            "Raw timestamps could not define a strict grid; using sample order "
+            "on an internal 20 Hz grid"
+        )
     del raw
     valid_satellite = frame["svid"].ne(255)
     if not valid_satellite.all():

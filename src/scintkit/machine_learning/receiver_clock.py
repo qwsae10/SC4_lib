@@ -36,6 +36,7 @@ class ReceiverClockReport:
     exact_duplicate_receiver_epochs_removed: int
     exact_duplicate_rows_removed: int
     gps_week_rollovers_unwrapped: int
+    sample_order_grid_fallback_used: bool
     missing_receiver_epochs: int
     receiver_gap_count: int
     first_timestamp: str
@@ -168,6 +169,38 @@ def _assign_regular_grid(
     return slots * np.int64(period_ns)
 
 
+def _assign_sample_order_grid(
+    epoch_times: np.ndarray,
+    *,
+    sample_rate_hz: float,
+) -> np.ndarray:
+    """Return a strictly increasing grid when raw timestamps are ambiguous.
+
+    Each observed epoch is first rounded to the nearest 20 Hz grid slot.  Row
+    order is authoritative: when an observed slot repeats or moves backward,
+    it is advanced to one slot after the preceding epoch.  Forward timestamp
+    jumps are retained, so trustworthy coarse gaps and minute boundaries still
+    anchor the internal clock.  This fallback is used only when the stricter
+    bounded-residual grid solver cannot find a path.
+    """
+
+    if sample_rate_hz <= 0:
+        raise ValueError("sample_rate_hz must be positive")
+    period_float = 1_000_000_000 / sample_rate_hz
+    period_ns = int(round(period_float))
+    if not np.isclose(period_ns, period_float):
+        raise ValueError("sample rate must have an integer-nanosecond period")
+
+    observed_slots = np.rint(epoch_times / period_ns).astype("int64")
+    epoch_number = np.arange(len(observed_slots), dtype="int64")
+    # A strictly increasing integer sequence has nondecreasing (slot - index).
+    # Cumulative maximum is the vectorized form of max(observed, previous + 1).
+    slots = np.maximum.accumulate(observed_slots - epoch_number) + epoch_number
+    if np.any(np.diff(slots) < 1):
+        raise AssertionError("sample-order grid construction was not increasing")
+    return slots * np.int64(period_ns)
+
+
 def reconstruct_receiver_clock(
     frame: pd.DataFrame,
     *,
@@ -206,10 +239,23 @@ def reconstruct_receiver_clock(
     keep_row = keep_epoch[epoch_ids]
 
     unwrapped, rollover_count = _unwrap_gps_weeks(epoch_times[keep_epoch])
-    fixed_epoch_times = _assign_regular_grid(
-        unwrapped,
-        sample_rate_hz=sample_rate_hz,
-    )
+    sample_order_fallback = False
+    try:
+        fixed_epoch_times = _assign_regular_grid(
+            unwrapped,
+            sample_rate_hz=sample_rate_hz,
+        )
+    except ValueError as error:
+        if not (
+            str(error).startswith("no feasible ")
+            or str(error).startswith("no strictly increasing sample-grid path")
+        ):
+            raise
+        fixed_epoch_times = _assign_sample_order_grid(
+            unwrapped,
+            sample_rate_hz=sample_rate_hz,
+        )
+        sample_order_fallback = True
 
     fixed_by_original_epoch = np.full(len(starts), NAT_INT, dtype="int64")
     fixed_by_original_epoch[keep_epoch] = fixed_epoch_times
@@ -235,6 +281,7 @@ def reconstruct_receiver_clock(
         exact_duplicate_receiver_epochs_removed=int(duplicate_epoch.sum()),
         exact_duplicate_rows_removed=int((~keep_row).sum()),
         gps_week_rollovers_unwrapped=rollover_count,
+        sample_order_grid_fallback_used=sample_order_fallback,
         missing_receiver_epochs=int(np.maximum(steps - 1, 0).sum()),
         receiver_gap_count=int(np.count_nonzero(steps > 1)),
         first_timestamp=str(pd.Timestamp(fixed_epoch_times[0])),
