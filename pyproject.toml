@@ -28,11 +28,15 @@ dev = [
   "pytest",
 ]
 
+[project.scripts]
+scintkit-ml-features = "scintkit.machine_learning.compute_ml_features:main"
+
 [tool.setuptools]
 packages = [
   "scintkit",
   "scintkit.data",
   "scintkit.email_updates",
+  "scintkit.machine_learning",
   "scintkit.pipelines",
   "scintkit.preprocessing",
   "scintkit.reading",
