@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
+import subprocess
+import sys
 
 import numpy as np
 import pandas as pd
@@ -31,6 +34,33 @@ EXAMPLE_SOURCE_NAME = (
     "scintpi3_20240120_2000_"
     "359072.9062W_72126.7422S_v326d.pq"
 )
+
+
+def test_ml_batch_import_does_not_import_matplotlib() -> None:
+    environment = os.environ.copy()
+    source_root = str(Path(__file__).resolve().parents[3])
+    existing_pythonpath = environment.get("PYTHONPATH")
+    environment["PYTHONPATH"] = (
+        f"{source_root}{os.pathsep}{existing_pythonpath}"
+        if existing_pythonpath
+        else source_root
+    )
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            (
+                "import sys; "
+                "import scintkit.machine_learning.batch_ml_features; "
+                "assert 'matplotlib' not in sys.modules"
+            ),
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+        env=environment,
+    )
+    assert result.returncode == 0, result.stderr
 
 
 def test_packed_filename_coordinates_decode_with_hemisphere_signs() -> None:

@@ -57,6 +57,17 @@ fi
 
 export PYTHONPATH="$PROJECT_ROOT/src"
 
+# ML extraction does not use plotting. Catch an outdated eager package
+# initializer before launching 16 workers, and verify that the batch import
+# stays independent of Matplotlib and its compiled GUI/runtime dependencies.
+if grep -Eq '^[[:space:]]*from[[:space:]]+\.[[:space:]]+import[[:space:]]+email_updates' \
+    "$PROJECT_ROOT/src/scintkit/__init__.py"; then
+    echo "ERROR: this checkout eagerly imports scintkit.email_updates." >&2
+    echo "Update src/scintkit/__init__.py to the lazy-import version before resubmitting." >&2
+    exit 3
+fi
+python -c 'import sys; import scintkit.machine_learning.batch_ml_features; assert "matplotlib" not in sys.modules'
+
 echo "Job ID: $SLURM_JOB_ID"
 echo "Array job ID: $RUN_ID"
 echo "Array task: $TASK_ID/${SLURM_ARRAY_TASK_COUNT:-1}"
