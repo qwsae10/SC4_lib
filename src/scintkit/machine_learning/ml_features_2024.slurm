@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=scintpi_ml_2024
+#SBATCH --job-name=scintpi_ml_features
 # Logs are redirected after startup into ~/features_run_<array-job-id>/.
 #SBATCH --output=/dev/null
 #SBATCH --error=/dev/null
@@ -80,7 +80,7 @@ cd "$PROJECT_ROOT"
 python -u "$SCRIPT" \
     --input-root /titan/frodrigues/scintpi_storage \
     --output-dir /titan/frodrigues/scintpi_storage/ml_features \
-    --year 2024 \
+    --year 2024,2025,2026 \
     --workers "$SLURM_CPUS_PER_TASK" \
     --shard-index "$SLURM_ARRAY_TASK_ID" \
     --shard-count "$SLURM_ARRAY_TASK_COUNT" \

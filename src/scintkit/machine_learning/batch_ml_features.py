@@ -1,25 +1,25 @@
 #!/usr/bin/env python3
 """Discover and process independent ScintPi files with a worker pool.
 
-ScintPi filenames store longitude and latitude as signed hemisphere tokens,
-but the numeric values are multiplied by 10,000.  For example,
-``359072.9062W_72126.7422S`` decodes to longitude -35.90729062 and latitude
--7.21267422.  This command filters files by decoded coordinates, assigns one
-whole source file to each process, and writes one restart-safe output per
-source file.
+ScintPi filenames store longitude and latitude as signed hemisphere tokens.
+The decoder accepts both 10,000x packed coordinates and ordinary decimal
+degrees. This command filters files by decoded coordinates, assigns one whole
+source file to each process, and writes one restart-safe output per source
+file.
 
 Example
 -------
 python batch_ml_features.py \
     --input-root /titan/frodrigues/scintpi_storage \
     --output-dir /titan/frodrigues/scintpi_storage/ml_features \
-    --year 2024 --workers 4 \
+    --year 2024,2025,2026 --workers 4 \
     --coordinate -7.213 -35.907
 """
 
 from __future__ import annotations
 
 import argparse
+from collections.abc import Iterable
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from dataclasses import dataclass
 import math
@@ -30,6 +30,17 @@ from time import perf_counter
 import traceback
 
 import pyarrow.parquet as pq
+
+try:  # Support both ``python file.py`` and ``python -m scintkit...``.
+    from .filename_metadata import (
+        DEFAULT_FILENAME_COORDINATE_SCALE,
+        parse_filename_coordinates,
+    )
+except ImportError:  # pragma: no cover - exercised by direct CLI use
+    from filename_metadata import (
+        DEFAULT_FILENAME_COORDINATE_SCALE,
+        parse_filename_coordinates,
+    )
 
 try:  # Support both ``python file.py`` and ``python -m scintkit...``.
     from .compute_ml_features import (
@@ -56,14 +67,9 @@ DEFAULT_WORKERS = 4
 DEFAULT_SHARD_INDEX = 0
 DEFAULT_SHARD_COUNT = 1
 DEFAULT_PATTERN = "*/*{year}*.pq"
-DEFAULT_FILENAME_COORDINATE_SCALE = 10_000.0
 DEFAULT_COORDINATE_TOLERANCE_DEG = 0.0005
 OUTPUT_SUFFIX = "_ml_features.pq"
 
-_COORDINATE_TOKEN = re.compile(
-    r"_(?P<value>\d+(?:\.\d+)?)(?P<hemisphere>[NSEW])(?=_|\.|$)",
-    flags=re.IGNORECASE,
-)
 _DATE_TOKEN = re.compile(r"_(?P<date>(?:19|20)\d{6})(?=_)")
 
 
@@ -80,42 +86,6 @@ class BatchResult:
     error: str | None = None
 
 
-def parse_filename_coordinates(
-    filename: str | Path,
-    *,
-    scale: float = DEFAULT_FILENAME_COORDINATE_SCALE,
-) -> tuple[float, float]:
-    """Return ``(latitude, longitude)`` decoded from a ScintPi filename."""
-
-    if not scale > 0:
-        raise ValueError("filename coordinate scale must be greater than zero")
-
-    decoded: dict[str, float] = {}
-    for match in _COORDINATE_TOKEN.finditer(Path(filename).name):
-        hemisphere = match.group("hemisphere").upper()
-        axis = "latitude" if hemisphere in {"N", "S"} else "longitude"
-        if axis in decoded:
-            raise ValueError(
-                f"filename contains multiple {axis} tokens: {Path(filename).name}"
-            )
-        magnitude = float(match.group("value")) / scale
-        sign = -1.0 if hemisphere in {"S", "W"} else 1.0
-        decoded[axis] = sign * magnitude
-
-    if set(decoded) != {"latitude", "longitude"}:
-        raise ValueError(
-            "filename must contain one N/S token and one E/W token: "
-            f"{Path(filename).name}"
-        )
-    latitude = decoded["latitude"]
-    longitude = decoded["longitude"]
-    if not -90 <= latitude <= 90 or not -180 <= longitude <= 180:
-        raise ValueError(
-            f"decoded coordinate is outside valid bounds: ({latitude}, {longitude})"
-        )
-    return latitude, longitude
-
-
 def filename_year(filename: str | Path) -> int:
     """Return the four-digit year in a ScintPi filename."""
 
@@ -123,6 +93,40 @@ def filename_year(filename: str | Path) -> int:
     if match is None:
         raise ValueError(f"filename does not contain a YYYYMMDD token: {filename}")
     return int(match.group("date")[:4])
+
+
+def normalize_years(year: int | Iterable[int]) -> tuple[int, ...]:
+    """Return unique requested years in their original order."""
+
+    values = (year,) if isinstance(year, int) else tuple(year)
+    if not values:
+        raise ValueError("at least one year is required")
+
+    years: list[int] = []
+    for value in values:
+        if isinstance(value, bool) or not isinstance(value, int):
+            raise ValueError(f"year must be an integer: {value!r}")
+        if not 1900 <= value <= 2099:
+            raise ValueError(f"year must be between 1900 and 2099: {value}")
+        if value not in years:
+            years.append(value)
+    return tuple(years)
+
+
+def parse_year_argument(value: str) -> tuple[int, ...]:
+    """Parse a comma-separated ``--year`` argument for argparse."""
+
+    tokens = [token.strip() for token in value.split(",")]
+    if not tokens or any(not token for token in tokens):
+        raise argparse.ArgumentTypeError(
+            "year must be one year or a comma-separated list, such as "
+            "2024,2025,2026"
+        )
+    try:
+        years = tuple(int(token) for token in tokens)
+        return normalize_years(years)
+    except ValueError as error:
+        raise argparse.ArgumentTypeError(str(error)) from error
 
 
 def coordinate_matches(
@@ -147,16 +151,17 @@ def discover_input_files(
     input_root: Path,
     *,
     output_dir: Path,
-    year: int,
+    year: int | Iterable[int],
     coordinates: list[tuple[float, float]],
     pattern: str = DEFAULT_PATTERN,
     coordinate_scale: float = DEFAULT_FILENAME_COORDINATE_SCALE,
     coordinate_tolerance_deg: float = DEFAULT_COORDINATE_TOLERANCE_DEG,
 ) -> list[Path]:
-    """Discover source Parquets for one year and a set of receiver sites."""
+    """Discover source Parquets for one or more years and receiver sites."""
 
     input_root = input_root.expanduser().resolve()
     output_dir = output_dir.expanduser().resolve()
+    years = normalize_years(year)
     if not input_root.is_dir():
         raise FileNotFoundError(f"input root does not exist: {input_root}")
     if not coordinates:
@@ -165,39 +170,47 @@ def discover_input_files(
         if not -90 <= latitude <= 90 or not -180 <= longitude <= 180:
             raise ValueError(f"invalid target coordinate: ({latitude}, {longitude})")
 
-    try:
-        rendered_pattern = pattern.format(year=year)
-    except (IndexError, KeyError, ValueError) as error:
-        raise ValueError(
-            "pattern may contain only the optional {year} placeholder"
-        ) from error
-
-    sources: list[Path] = []
-    for path in input_root.glob(rendered_pattern):
-        if not path.is_file():
-            continue
-        if path.parent == output_dir or path.name.endswith(OUTPUT_SUFFIX):
-            continue
+    sources: set[Path] = set()
+    rendered_patterns: list[str] = []
+    for requested_year in years:
         try:
-            if filename_year(path) != year:
-                continue
-            coordinate = parse_filename_coordinates(path, scale=coordinate_scale)
-        except ValueError:
-            continue
-        if coordinate_matches(
-            coordinate,
-            coordinates,
-            tolerance_deg=coordinate_tolerance_deg,
-        ):
-            sources.append(path)
+            rendered_pattern = pattern.format(year=requested_year)
+        except (IndexError, KeyError, ValueError) as error:
+            raise ValueError(
+                "pattern may contain only the optional {year} placeholder"
+            ) from error
+        rendered_patterns.append(rendered_pattern)
 
-    sources.sort(key=lambda path: str(path))
-    if not sources:
+        for path in input_root.glob(rendered_pattern):
+            if not path.is_file():
+                continue
+            if path.parent == output_dir or path.name.endswith(OUTPUT_SUFFIX):
+                continue
+            try:
+                if filename_year(path) != requested_year:
+                    continue
+                coordinate = parse_filename_coordinates(
+                    path,
+                    scale=coordinate_scale,
+                )
+            except ValueError:
+                continue
+            if coordinate_matches(
+                coordinate,
+                coordinates,
+                tolerance_deg=coordinate_tolerance_deg,
+            ):
+                sources.add(path)
+
+    ordered_sources = sorted(sources, key=lambda path: str(path))
+    if not ordered_sources:
+        year_text = ",".join(str(value) for value in years)
         raise FileNotFoundError(
-            f"no {year} source files under {input_root} matched pattern "
-            f"{rendered_pattern!r} and the requested coordinates"
+            f"no source files for year(s) {year_text} under {input_root} "
+            f"matched pattern(s) {rendered_patterns!r} and the requested "
+            "coordinates"
         )
-    return sources
+    return ordered_sources
 
 
 def output_path_for(source: Path, output_dir: Path) -> Path:
@@ -369,7 +382,7 @@ def run_batch(
     input_root: Path,
     output_dir: Path,
     *,
-    year: int,
+    year: int | Iterable[int],
     coordinates: list[tuple[float, float]],
     workers: int = DEFAULT_WORKERS,
     shard_index: int = DEFAULT_SHARD_INDEX,
@@ -386,10 +399,11 @@ def run_batch(
     if workers < 1:
         raise ValueError("workers must be at least 1")
     output_dir = output_dir.expanduser().resolve()
+    years = normalize_years(year)
     all_sources = discover_input_files(
         input_root,
         output_dir=output_dir,
-        year=year,
+        year=years,
         coordinates=coordinates,
         pattern=pattern,
         coordinate_scale=coordinate_scale,
@@ -413,7 +427,7 @@ def run_batch(
         f"({len(sources):,} files assigned)"
     )
     print(f"Workers: {workers}")
-    print(f"Year: {year}")
+    print(f"Years: {','.join(str(value) for value in years)}")
     print(f"Target coordinates (lat, lon): {coordinates}")
     print(f"Output directory: {output_dir}", flush=True)
 
@@ -489,7 +503,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--input-root", type=Path, default=DEFAULT_INPUT_ROOT)
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
-    parser.add_argument("--year", type=int, default=DEFAULT_YEAR)
+    parser.add_argument(
+        "--year",
+        type=parse_year_argument,
+        default=(DEFAULT_YEAR,),
+        help="one year or a comma-separated list (for example: 2024,2025,2026)",
+    )
     parser.add_argument("--workers", type=int, default=DEFAULT_WORKERS)
     parser.add_argument(
         "--shard-index",

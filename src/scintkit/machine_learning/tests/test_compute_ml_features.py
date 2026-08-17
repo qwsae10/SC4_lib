@@ -8,6 +8,7 @@ import sys
 import numpy as np
 import pandas as pd
 
+from scintkit.machine_learning.assemble_labeled_features import select_and_label
 from scintkit.machine_learning.batch_ml_features import (
     DEFAULT_COORDINATE_TOLERANCE_DEG,
     discover_input_files,
@@ -15,6 +16,7 @@ from scintkit.machine_learning.batch_ml_features import (
     filename_year,
     output_path_for,
     parse_filename_coordinates,
+    parse_year_argument,
     select_file_shard,
 )
 from scintkit.machine_learning.compute_ml_features import (
@@ -33,6 +35,9 @@ from scintkit.services.phase_detrend import repair_discontinuities_pos
 EXAMPLE_SOURCE_NAME = (
     "scintpi3_20240120_2000_"
     "359072.9062W_72126.7422S_v326d.pq"
+)
+DECIMAL_DEGREE_SOURCE_NAME = (
+    "scintpi3_20260408_2000_96.79263W_46.90714N_v326f.pq"
 )
 
 
@@ -83,6 +88,38 @@ def test_packed_filename_coordinates_decode_with_hemisphere_signs() -> None:
         )
 
 
+def test_decimal_degree_filename_coordinates_are_not_divided_by_scale() -> None:
+    assert np.allclose(
+        parse_filename_coordinates(DECIMAL_DEGREE_SOURCE_NAME),
+        (46.90714, -96.79263),
+        rtol=0,
+        atol=1e-14,
+    )
+
+
+def test_decimal_degree_multipath_file_is_labeled() -> None:
+    frame = pd.DataFrame(
+        {
+            "svid": [1],
+            "s4_1": [0.30],
+            "elevation_deg": [30.0],
+            "minute_timestamp_utc": [pd.Timestamp("2026-04-08 20:00:00")],
+        }
+    )
+    feature_name = DECIMAL_DEGREE_SOURCE_NAME.replace(
+        ".pq",
+        "_ml_features.pq",
+    )
+    labeled = select_and_label(frame, Path(feature_name))
+    assert labeled["label"].tolist() == ["Multipath"]
+
+
+def test_year_argument_accepts_one_or_multiple_years() -> None:
+    assert parse_year_argument("2024") == (2024,)
+    assert parse_year_argument("2024,2025,2026") == (2024, 2025, 2026)
+    assert parse_year_argument("2024, 2025,2024") == (2024, 2025)
+
+
 def test_file_discovery_filters_year_coordinates_and_generated_outputs(
     tmp_path,
 ) -> None:
@@ -107,6 +144,28 @@ def test_file_discovery_filters_year_coordinates_and_generated_outputs(
     assert sources == [matched]
     assert output_path_for(matched, output_dir) == generated
     assert error_path_for(generated).name.endswith("_ml_features_err.txt")
+
+
+def test_file_discovery_accepts_multiple_years_and_coordinate_formats(
+    tmp_path,
+) -> None:
+    station = tmp_path / "receiver_a"
+    station.mkdir()
+    packed_2024 = station / EXAMPLE_SOURCE_NAME
+    packed_2025 = station / EXAMPLE_SOURCE_NAME.replace("20240120", "20250120")
+    decimal_2026 = station / DECIMAL_DEGREE_SOURCE_NAME
+    for source in (packed_2024, packed_2025, decimal_2026):
+        source.touch()
+
+    output_dir = tmp_path / "ml_features"
+    output_dir.mkdir()
+    sources = discover_input_files(
+        tmp_path,
+        output_dir=output_dir,
+        year=(2024, 2025, 2026),
+        coordinates=[(-7.213, -35.907), (46.907, -96.793)],
+    )
+    assert sources == sorted((packed_2024, packed_2025, decimal_2026))
 
 
 def test_file_shards_are_disjoint_and_cover_every_whole_file() -> None:

@@ -5,9 +5,9 @@ Edit FEATURE_DIR and OUTPUT_FILE in the settings block, then run:
 
     python assemble_labeled_features.py
 
-The coordinate tokens in each feature filename are decoded using the ScintPi
-10,000x filename scale. Only rows matching one of the three label definitions
-are written. The source feature files are never modified.
+Coordinate tokens may use the older ScintPi 10,000x packing or ordinary
+decimal degrees. Only rows matching one of the three label definitions are
+written. The source feature files are never modified.
 """
 
 # %% Settings
@@ -21,11 +21,15 @@ OVERWRITE = False
 
 # %% Imports and label definitions
 import os
-import re
 
 import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
+
+try:  # Support both ``python file.py`` and ``python -m scintkit...``.
+    from .filename_metadata import parse_filename_coordinates
+except ImportError:  # pragma: no cover - exercised by direct CLI use
+    from filename_metadata import parse_filename_coordinates
 
 
 COORDINATE_TOLERANCE_DEG = 0.0005
@@ -45,26 +49,11 @@ REQUIRED_COLUMNS = {
     "minute_timestamp_utc",
 }
 
-COORDINATE_TOKEN = re.compile(
-    r"_(?P<value>\d+(?:\.\d+)?)(?P<hemisphere>[NSEW])(?=_|\.|$)",
-    flags=re.IGNORECASE,
-)
-
 
 def coordinates_from_filename(path: Path) -> tuple[float, float]:
-    """Return (latitude, longitude) from one packed ScintPi filename."""
+    """Return (latitude, longitude) from one ScintPi filename."""
 
-    decoded: dict[str, float] = {}
-    for match in COORDINATE_TOKEN.finditer(path.name):
-        hemisphere = match.group("hemisphere").upper()
-        axis = "latitude" if hemisphere in {"N", "S"} else "longitude"
-        magnitude = float(match.group("value")) / 10_000.0
-        sign = -1.0 if hemisphere in {"S", "W"} else 1.0
-        decoded[axis] = sign * magnitude
-
-    if set(decoded) != {"latitude", "longitude"}:
-        raise ValueError(f"could not decode coordinates from {path.name}")
-    return decoded["latitude"], decoded["longitude"]
+    return parse_filename_coordinates(path)
 
 
 def is_site(
